@@ -1,0 +1,4 @@
+# The tla+ toolbox creates a .toolbox folder for each specification you create
+# While this folder does contain model details, which we potentially want to check
+# in, it also contains a lot of other files, so we ignore it for the moment
+*.toolbox/
