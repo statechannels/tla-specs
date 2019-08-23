@@ -2,8 +2,10 @@
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
     Alice, \* A model value
-    OtherParticipants, \* A set of model values
-    NumHistories
+    Names, \* A set of model values
+    Participants, \* A set of model values
+    NumHistories,
+    NULL \* A model value representing null.
 
 ChallengeStatus == [
   CLEARED |-> "CLEARED",
@@ -13,20 +15,22 @@ ChallengeStatus == [
 
 Range(f) == { f[x] : x \in DOMAIN f }
 StartingTurnNumber == 1
+NumParticipants == Len(Participants)
 
 ASSUME
-  /\ Alice \notin OtherParticipants
-  /\ Cardinality(OtherParticipants) > 0
+  /\ Alice \in Names
+  /\ Cardinality(Names) = NumParticipants
+  /\ Len(Participants) >= 2
   /\ NumHistories \in Nat
+  /\ \A p \in Range(Participants) : p \in Names
             
-(* --algorithm consensus_update
-\* This is Pluscal (Pascal for TLA+)
+(* --algorithm forceMove
 
-variables challenge = [turnNumber |-> 0, status |-> ChallengeStatus.CLEARED, votesRequired |-> 0]
+variables
+    challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED],
+    submittedChallenge = NULL
 
 define
-\* Arrays are 1-indexed, while the % operator returns a number between 0 and NumParticipants.
-\* This explains the following slightly complicated expression
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
 challengeIsPresent == challenge.status # ChallengeStatus.CLEARED
 end define;
@@ -105,23 +109,24 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label HandleChallenge of process adjudicator at line 56 col 1 changed to HandleChallenge_
-\* Label ExpireChallenge of process adjudicator at line 60 col 9 changed to ExpireChallenge_
-\* Label HandleChallenge of process alice at line 75 col 1 changed to HandleChallenge_a
-\* Label ExpireChallenge of process alice at line 79 col 9 changed to ExpireChallenge_a
-VARIABLES challenge, pc
+\* Label HandleChallenge of process adjudicator at line 62 col 1 changed to HandleChallenge_
+\* Label ExpireChallenge of process adjudicator at line 66 col 9 changed to ExpireChallenge_
+\* Label HandleChallenge of process alice at line 81 col 1 changed to HandleChallenge_a
+\* Label ExpireChallenge of process alice at line 85 col 9 changed to ExpireChallenge_a
+VARIABLES challenge, submittedChallenge, pc
 
 (* define statement *)
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
 challengeIsPresent == challenge.status # ChallengeStatus.CLEARED
 
 
-vars == << challenge, pc >>
+vars == << challenge, submittedChallenge, pc >>
 
 ProcSet == {0} \cup {1} \cup {2}
 
 Init == (* Global variables *)
-        /\ challenge = [turnNumber |-> 0, status |-> ChallengeStatus.CLEARED, votesRequired |-> 0]
+        /\ challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED]
+        /\ submittedChallenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge_"
                                         [] self = 1 -> "HandleChallenge_a"
                                         [] self = 2 -> "HandleChallenge"]
@@ -131,11 +136,12 @@ HandleChallenge_ == /\ pc[0] = "HandleChallenge_"
                           THEN /\ challenge.status = ChallengeStatus.ACTIVE
                                /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge_"]
                           ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
-                    /\ UNCHANGED challenge
+                    /\ UNCHANGED << challenge, submittedChallenge >>
 
 ExpireChallenge_ == /\ pc[0] = "ExpireChallenge_"
                     /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
                     /\ pc' = [pc EXCEPT ![0] = "HandleChallenge_"]
+                    /\ UNCHANGED submittedChallenge
 
 adjudicator == HandleChallenge_ \/ ExpireChallenge_
 
@@ -144,11 +150,12 @@ HandleChallenge_a == /\ pc[1] = "HandleChallenge_a"
                            THEN /\ challenge.status = ChallengeStatus.ACTIVE
                                 /\ pc' = [pc EXCEPT ![1] = "ExpireChallenge_a"]
                            ELSE /\ pc' = [pc EXCEPT ![1] = "Done"]
-                     /\ UNCHANGED challenge
+                     /\ UNCHANGED << challenge, submittedChallenge >>
 
 ExpireChallenge_a == /\ pc[1] = "ExpireChallenge_a"
                      /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
                      /\ pc' = [pc EXCEPT ![1] = "HandleChallenge_a"]
+                     /\ UNCHANGED submittedChallenge
 
 alice == HandleChallenge_a \/ ExpireChallenge_a
 
@@ -157,11 +164,12 @@ HandleChallenge == /\ pc[2] = "HandleChallenge"
                          THEN /\ challenge.status = ChallengeStatus.ACTIVE
                               /\ pc' = [pc EXCEPT ![2] = "ExpireChallenge"]
                          ELSE /\ pc' = [pc EXCEPT ![2] = "Done"]
-                   /\ UNCHANGED challenge
+                   /\ UNCHANGED << challenge, submittedChallenge >>
 
 ExpireChallenge == /\ pc[2] = "ExpireChallenge"
                    /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
                    /\ pc' = [pc EXCEPT ![2] = "HandleChallenge"]
+                   /\ UNCHANGED submittedChallenge
 
 eve == HandleChallenge \/ ExpireChallenge
 
@@ -185,15 +193,14 @@ AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
 AllowedChallenges ==
   [
     turnNumber: AllowedTurnNumbers,
-    status: Range(ChallengeStatus),
-    votesRequired: 0..(NumParticipants - 1)
+    status: Range(ChallengeStatus)
   ]
 
 
 \* Safety properties
 
-TypeOK ==
-  /\ challenge \in AllowedChallenges
+\*TypeOK ==
+\*  /\ challenge \in AllowedChallenges
 
 \* TODO: Get TurnNumberDoesNotDecrease and StaysTerminated
 \* For some reason, state[p].turnNumber' is not valid
@@ -215,5 +222,5 @@ TypeOK ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 15:44:30 MDT 2019 by andrewstewart
+\* Last modified Fri Aug 23 15:53:38 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
