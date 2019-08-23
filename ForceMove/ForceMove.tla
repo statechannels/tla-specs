@@ -45,14 +45,6 @@ challenge := [
 
 end macro;
 
-macro processChallenge()
-begin skip; end macro;
-
-macro respondToChallenge()
-begin
-skip;
-end macro;
-
 fair process adjudicator = 0
 begin
 (***************************************************************************)
@@ -88,12 +80,14 @@ end process;
 
 fair process eve = 2
 begin
-(****************************************************************************
-Eve can do almost anything.  She has k different histories that each
-contain commitments 1...(n-1).  She can sign any data with any private
-key other than Alice's.  She can call any adjudicator function, at any
-time.  She can front-run any transaction an arbitrary number of times -- ie. if anyone else calls an adjudicator function, she can then choose to call 
-****************************************************************************)
+(***************************************************************************)
+(* Eve can do almost anything.  She has k different histories that each    *)
+(* contain commitments 1...(n-1).  She can sign any data with any private  *)
+(* key other than Alice's.  She can call any adjudicator function, at any  *)
+(* time.  She can front-run any transaction an arbitrary number of times:  *)
+(* if anyone else calls an adjudicator function in a transaction tx, she   *)
+(* can then choose to submit any transaction before tx is mined.           *)
+(***************************************************************************)
 HandleChallenge:
 while challenge.status # ChallengeStatus.EXPIRED
 do
@@ -109,10 +103,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label HandleChallenge of process adjudicator at line 62 col 1 changed to HandleChallenge_
-\* Label ExpireChallenge of process adjudicator at line 66 col 9 changed to ExpireChallenge_
-\* Label HandleChallenge of process alice at line 81 col 1 changed to HandleChallenge_a
-\* Label ExpireChallenge of process alice at line 85 col 9 changed to ExpireChallenge_a
+\* Label HandleChallenge of process adjudicator at line 54 col 1 changed to HandleChallenge_
+\* Label ExpireChallenge of process adjudicator at line 58 col 9 changed to ExpireChallenge_
+\* Label HandleChallenge of process alice at line 73 col 1 changed to HandleChallenge_a
+\* Label ExpireChallenge of process alice at line 77 col 9 changed to ExpireChallenge_a
 VARIABLES challenge, submittedChallenge, pc
 
 (* define statement *)
@@ -222,5 +216,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 15:53:38 MDT 2019 by andrewstewart
+\* Last modified Fri Aug 23 16:08:24 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
