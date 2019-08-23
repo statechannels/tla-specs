@@ -59,23 +59,17 @@ do
 end while;
 end process;
 
-fair process alice = 1
+fair process archie = 1
 begin
 (***************************************************************************)
-(* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
-(* up with commitments (n - numParticipants + 1)..n.  She is allowed to:   *)
-(*   - Call forceMove with any states that she currently has               *)
-(*   - Call refute with any state that she has                             *)
+(* Alice has commitments (n - numParticipants)..(n-1).  He wants to end    *)
+(* up with commitments (n - numParticipants + 1)..n.  He is allowed to:    *)
+(*   - Call forceMove with any states that he currently has                *)
+(*   - Call refute with any state that he has                              *)
 (*   - Call respondWithMove whenever there's an active challenge forcing   *)
-(*     her to move                                                         *)
+(*     his to move                                                         *)
 (***************************************************************************)
-HandleChallenge:
-while challenge.status # ChallengeStatus.EXPIRED
-do
-    await challenge.status = ChallengeStatus.ACTIVE;
-    ExpireChallenge:
-        challenge := [ status |-> ChallengeStatus.EXPIRED ] @@ challenge;
-end while;
+AliceMoves: skip;
 end process;
 
 fair process eve = 2
@@ -86,15 +80,10 @@ begin
 (* key other than Alice's.  She can call any adjudicator function, at any  *)
 (* time.  She can front-run any transaction an arbitrary number of times:  *)
 (* if anyone else calls an adjudicator function in a transaction tx, she   *)
-(* can then choose to submit any transaction before tx is mined.           *)
+(* can then choose to submit any transaction before tx is mined.  She can  *)
+(* expire challenges whenever the current challenge doesn't allow          *)
 (***************************************************************************)
-HandleChallenge:
-while challenge.status # ChallengeStatus.EXPIRED
-do
-    await challenge.status = ChallengeStatus.ACTIVE;
-    ExpireChallenge:
-        challenge := [ status |-> ChallengeStatus.EXPIRED ] @@ challenge;
-end while;
+EveMoves: skip;
 end process;
 
 
@@ -103,10 +92,6 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label HandleChallenge of process adjudicator at line 54 col 1 changed to HandleChallenge_
-\* Label ExpireChallenge of process adjudicator at line 58 col 9 changed to ExpireChallenge_
-\* Label HandleChallenge of process alice at line 73 col 1 changed to HandleChallenge_a
-\* Label ExpireChallenge of process alice at line 77 col 9 changed to ExpireChallenge_a
 VARIABLES challenge, submittedChallenge, pc
 
 (* define statement *)
@@ -121,62 +106,48 @@ ProcSet == {0} \cup {1} \cup {2}
 Init == (* Global variables *)
         /\ challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED]
         /\ submittedChallenge = NULL
-        /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge_"
-                                        [] self = 1 -> "HandleChallenge_a"
-                                        [] self = 2 -> "HandleChallenge"]
+        /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
+                                        [] self = 1 -> "AliceMoves"
+                                        [] self = 2 -> "EveMoves"]
 
-HandleChallenge_ == /\ pc[0] = "HandleChallenge_"
-                    /\ IF challenge.status # ChallengeStatus.EXPIRED
-                          THEN /\ challenge.status = ChallengeStatus.ACTIVE
-                               /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge_"]
-                          ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
-                    /\ UNCHANGED << challenge, submittedChallenge >>
-
-ExpireChallenge_ == /\ pc[0] = "ExpireChallenge_"
-                    /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
-                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge_"]
-                    /\ UNCHANGED submittedChallenge
-
-adjudicator == HandleChallenge_ \/ ExpireChallenge_
-
-HandleChallenge_a == /\ pc[1] = "HandleChallenge_a"
-                     /\ IF challenge.status # ChallengeStatus.EXPIRED
-                           THEN /\ challenge.status = ChallengeStatus.ACTIVE
-                                /\ pc' = [pc EXCEPT ![1] = "ExpireChallenge_a"]
-                           ELSE /\ pc' = [pc EXCEPT ![1] = "Done"]
-                     /\ UNCHANGED << challenge, submittedChallenge >>
-
-ExpireChallenge_a == /\ pc[1] = "ExpireChallenge_a"
-                     /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
-                     /\ pc' = [pc EXCEPT ![1] = "HandleChallenge_a"]
-                     /\ UNCHANGED submittedChallenge
-
-alice == HandleChallenge_a \/ ExpireChallenge_a
-
-HandleChallenge == /\ pc[2] = "HandleChallenge"
+HandleChallenge == /\ pc[0] = "HandleChallenge"
                    /\ IF challenge.status # ChallengeStatus.EXPIRED
                          THEN /\ challenge.status = ChallengeStatus.ACTIVE
-                              /\ pc' = [pc EXCEPT ![2] = "ExpireChallenge"]
-                         ELSE /\ pc' = [pc EXCEPT ![2] = "Done"]
+                              /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
+                         ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
                    /\ UNCHANGED << challenge, submittedChallenge >>
 
-ExpireChallenge == /\ pc[2] = "ExpireChallenge"
+ExpireChallenge == /\ pc[0] = "ExpireChallenge"
                    /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
-                   /\ pc' = [pc EXCEPT ![2] = "HandleChallenge"]
+                   /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
                    /\ UNCHANGED submittedChallenge
 
-eve == HandleChallenge \/ ExpireChallenge
+adjudicator == HandleChallenge \/ ExpireChallenge
+
+AliceMoves == /\ pc[1] = "AliceMoves"
+              /\ TRUE
+              /\ pc' = [pc EXCEPT ![1] = "Done"]
+              /\ UNCHANGED << challenge, submittedChallenge >>
+
+archie == AliceMoves
+
+EveMoves == /\ pc[2] = "EveMoves"
+            /\ TRUE
+            /\ pc' = [pc EXCEPT ![2] = "Done"]
+            /\ UNCHANGED << challenge, submittedChallenge >>
+
+eve == EveMoves
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == adjudicator \/ alice \/ eve
+Next == adjudicator \/ archie \/ eve
            \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
-        /\ WF_vars(alice)
+        /\ WF_vars(archie)
         /\ WF_vars(eve)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
@@ -216,5 +187,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 16:08:24 MDT 2019 by andrewstewart
+\* Last modified Fri Aug 23 16:16:46 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
