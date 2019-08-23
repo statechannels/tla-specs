@@ -53,9 +53,15 @@ begin
 HandleChallenge:
 while challenge.status # ChallengeStatus.EXPIRED
 do
-    await challenge.status = ChallengeStatus.ACTIVE;
-    ExpireChallenge:
-        challenge := [ status |-> ChallengeStatus.EXPIRED ] @@ challenge;
+    either
+        ExpireChallenge: 
+            await challenge.status = ChallengeStatus.ACTIVE;
+            challenge := [ status |-> ChallengeStatus.EXPIRED ] @@ challenge;
+    or
+        RecordChallenge:
+            await submittedChallenge # NULL;
+            challenge := submittedChallenge;
+    end either;
 end while;
 end process;
 
@@ -63,18 +69,20 @@ fair process archie = 1
 begin
 (***************************************************************************)
 (* Alice has commitments (n - numParticipants)..(n-1).  He wants to end    *)
-(* up with commitments (n - numParticipants + 1)..n.  He is allowed to:    *)
+(* up with commitments (n - numParticipants + 1)..n.                       *)
+(*                                                                         *)
+(* He is allowed to:                                                       *)
 (*   - Call forceMove with any states that he currently has                *)
 (*   - Call refute with any state that he has                              *)
-(*   - Call respondWithMove whenever there's an active challenge forcing   *)
-(*     his to move                                                         *)
+(*   - Call respondWithMove or respondWithMove whenever there's an active  *)
+(*     challenge where it's his turn to move                               *)
 (***************************************************************************)
 AliceMoves: skip;
 end process;
 
 fair process eve = 2
 begin
-(***************************************************************************)
+(****************************************************************************)
 (* Eve can do almost anything.  She has k different histories that each    *)
 (* contain commitments 1...(n-1).  She can sign any data with any private  *)
 (* key other than Alice's.  She can call any adjudicator function, at any  *)
@@ -112,17 +120,24 @@ Init == (* Global variables *)
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
                    /\ IF challenge.status # ChallengeStatus.EXPIRED
-                         THEN /\ challenge.status = ChallengeStatus.ACTIVE
-                              /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
+                         THEN /\ \/ /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
+                                 \/ /\ pc' = [pc EXCEPT ![0] = "RecordChallenge"]
                          ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
                    /\ UNCHANGED << challenge, submittedChallenge >>
 
 ExpireChallenge == /\ pc[0] = "ExpireChallenge"
+                   /\ challenge.status = ChallengeStatus.ACTIVE
                    /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
                    /\ UNCHANGED submittedChallenge
 
-adjudicator == HandleChallenge \/ ExpireChallenge
+RecordChallenge == /\ pc[0] = "RecordChallenge"
+                   /\ submittedChallenge # NULL
+                   /\ challenge' = submittedChallenge
+                   /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
+                   /\ UNCHANGED submittedChallenge
+
+adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
 AliceMoves == /\ pc[1] = "AliceMoves"
               /\ TRUE
@@ -187,5 +202,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 16:16:46 MDT 2019 by andrewstewart
+\* Last modified Fri Aug 23 16:37:17 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
