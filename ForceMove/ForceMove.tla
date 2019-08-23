@@ -35,12 +35,23 @@ mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
 challengeIsPresent == challenge.status # ChallengeStatus.CLEARED
 end define;
 
-macro forceMove(turnNumber, votesRequired)
+macro respondWithMove(turnNumber, signer)
+begin skip;
+end macro;
+
+macro respondWithAlternativeMove(turnNumber, signer)
+begin skip;
+end macro;
+
+macro refute(turnNumber, signer)
+begin skip;
+end macro;
+
+macro forceMove(turnNumber)
 begin
-challenge := [
+submittedChallenge := [
   turnNumber    |-> turnNumber,
-  status        |-> ChallengeStatus.ACTIVE,
-  votesRequired |-> votesRequired
+  status        |-> ChallengeStatus.ACTIVE
 ];
 
 end macro;
@@ -202,5 +213,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 16:37:17 MDT 2019 by andrewstewart
+\* Last modified Fri Aug 23 16:38:52 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
