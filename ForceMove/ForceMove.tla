@@ -32,33 +32,67 @@ ASSUME
 
 variables
     channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN],
-    submittedChallenge = NULL
+    challenge = NULL
 
 define
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
+channelOpen ==      channel.mode = ChannelMode.OPEN
+
+\* TODO: Fill out these checks.
+roundIsValid(round) == TRUE
+challengerSigIsValid(challenger) == TRUE
+progressesChannel(round) == TRUE
+validTransition(turnNumber, signer) == TRUE
+
 end define;
 
-macro respondWithMove(turnNumber, signer)
-begin skip;
-end macro;
-
-macro respondWithAlternativeMove(turnNumber, signer)
-begin skip;
-end macro;
-
-macro refute(turnNumber, signer)
-begin skip;
-end macro;
-
-macro forceMove(turnNumber, signer)
+macro clearChallenge(turnNumber)
 begin
-if TRUE then skip; \* TODO: Check conditions on the submitted channel
-else
-    submittedChallenge := [
-      turnNumber    |-> turnNumber,
-      mode        |-> ChannelMode.CHALLENGE
-    ];
+channel := [ turnNumber |-> turnNumber, mode |-> ChannelMode.OPEN ];
+end macro;
+
+macro setChallenge(turnNumber)
+begin
+channel := [ turnNumber |-> turnNumber, mode |-> ChannelMode.CHALLENGE ];
+end macro;
+
+macro respondWithMove(turnNumber, signer)
+begin
+if
+    /\ challengeOngoing
+    /\ validTransition(signer, turnNumber)
+then clearChallenge(turnNumber)
+end if;
+end macro;
+
+macro respondWithAlternativeMove(round, signer)
+begin
+if
+    /\ roundIsValid(round)
+    /\ challengeOngoing
+    /\ round[NumParticipants].turnNumber > channel.turnNumber
+then clearChallenge(round[NumParticipants].turnNumber);
+end if;
+end macro;
+
+macro refute(turnNumber)
+begin
+if
+    /\ challengeOngoing
+    /\ turnNumber > channel.turnNumber
+then clearChallenge(channel.turnNumber);
+end if;
+end macro;
+
+macro forceMove(turnNumber, round, challenger)
+begin
+if
+    /\ roundIsValid(round)
+    /\ channelOpen
+    /\ challengerSigIsValid(challenger)
+    /\ progressesChannel(round)
+then setChallenge(turnNumber)
 end if;
 
 end macro;
@@ -78,14 +112,9 @@ do
             channel := [ mode |-> ChannelMode.FINALIZED ] @@ channel;
     or
         RecordChallenge:
-            await submittedChallenge # NULL;
-            if
-              /\ channel.mode # ChannelMode.OPEN
-              /\ channel.turnNumber < challenge.turnNumber
-            then
-                channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
-                submittedChallenge := NULL;
-            end if;
+            await challenge # NULL;
+            channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
+            challenge := NULL;
     end either;
 end while;
 end process;
@@ -125,22 +154,29 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-VARIABLES channel, submittedChallenge, pc
+VARIABLES channel, challenge, pc
 
 (* define statement *)
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
+channelOpen ==      channel.mode = ChannelMode.OPEN
 
 
-vars == << channel, submittedChallenge, pc >>
+roundIsValid(round) == TRUE
+challengerSigIsValid(challenger) == TRUE
+progressesChannel(round) == TRUE
+validTransition(turnNumber, signer) == TRUE
+
+
+vars == << channel, challenge, pc >>
 
 ProcSet == {0} \cup {1} \cup {2}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN]
-        /\ submittedChallenge = NULL
+        /\ challenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
-                                        [] self = 1 -> "ArchieMoves"
+                                        [] self = 1 -> "One"
                                         [] self = 2 -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
@@ -148,37 +184,67 @@ HandleChallenge == /\ pc[0] = "HandleChallenge"
                          THEN /\ \/ /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
                                  \/ /\ pc' = [pc EXCEPT ![0] = "RecordChallenge"]
                          ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
-                   /\ UNCHANGED << channel, submittedChallenge >>
+                   /\ UNCHANGED << channel, challenge >>
 
 ExpireChallenge == /\ pc[0] = "ExpireChallenge"
                    /\ channel.mode = ChannelMode.CHALLENGE
                    /\ channel' = [ mode |-> ChannelMode.FINALIZED ] @@ channel
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
-                   /\ UNCHANGED submittedChallenge
+                   /\ UNCHANGED challenge
 
 RecordChallenge == /\ pc[0] = "RecordChallenge"
-                   /\ submittedChallenge # NULL
-                   /\ IF /\ channel.mode # ChannelMode.OPEN
-                         /\ channel.turnNumber < challenge.turnNumber
-                         THEN /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
-                              /\ submittedChallenge' = NULL
-                         ELSE /\ TRUE
-                              /\ UNCHANGED << channel, submittedChallenge >>
+                   /\ challenge # NULL
+                   /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
+                   /\ challenge' = NULL
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
-ArchieMoves == /\ pc[1] = "ArchieMoves"
-               /\ TRUE
-               /\ pc' = [pc EXCEPT ![1] = "Done"]
-               /\ UNCHANGED << channel, submittedChallenge >>
+One == /\ pc[1] = "One"
+       /\ IF /\ roundIsValid(({}))
+             /\ channelOpen
+             /\ challengerSigIsValid(Archie)
+             /\ progressesChannel(({}))
+             THEN /\ channel' = [ turnNumber |-> 2, mode |-> ChannelMode.CHALLENGE ]
+             ELSE /\ TRUE
+                  /\ UNCHANGED channel
+       /\ pc' = [pc EXCEPT ![1] = "Two"]
+       /\ UNCHANGED challenge
 
-archie == ArchieMoves
+Two == /\ pc[1] = "Two"
+       /\ IF /\ challengeOngoing
+             /\ validTransition(Archie, 3)
+             THEN /\ channel' = [ turnNumber |-> 3, mode |-> ChannelMode.OPEN ]
+             ELSE /\ TRUE
+                  /\ UNCHANGED channel
+       /\ pc' = [pc EXCEPT ![1] = "Three"]
+       /\ UNCHANGED challenge
+
+Three == /\ pc[1] = "Three"
+         /\ IF /\ roundIsValid(({}))
+               /\ challengeOngoing
+               /\ ({})[NumParticipants].turnNumber > channel.turnNumber
+               THEN /\ channel' = [ turnNumber |-> (({})[NumParticipants].turnNumber), mode |-> ChannelMode.OPEN ]
+               ELSE /\ TRUE
+                    /\ UNCHANGED channel
+         /\ pc' = [pc EXCEPT ![1] = "Four"]
+         /\ UNCHANGED challenge
+
+Four == /\ pc[1] = "Four"
+        /\ IF /\ challengeOngoing
+              /\ 5 > channel.turnNumber
+              THEN /\ channel' = [ turnNumber |-> (channel.turnNumber), mode |-> ChannelMode.OPEN ]
+              ELSE /\ TRUE
+                   /\ UNCHANGED channel
+        /\ pc' = [pc EXCEPT ![1] = "Done"]
+        /\ UNCHANGED challenge
+
+archie == One \/ Two \/ Three \/ Four
 
 EveMoves == /\ pc[2] = "EveMoves"
             /\ TRUE
             /\ pc' = [pc EXCEPT ![2] = "Done"]
-            /\ UNCHANGED << channel, submittedChallenge >>
+            /\ UNCHANGED << channel, challenge >>
 
 eve == EveMoves
 
@@ -231,5 +297,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 26 10:53:26 MDT 2019 by andrewstewart
+\* Last modified Mon Aug 26 11:29:08 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
