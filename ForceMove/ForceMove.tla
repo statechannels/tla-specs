@@ -7,18 +7,18 @@ CONSTANTS
     Histories,
     NULL \* A model value representing null.
 
-ChallengeStatus == [
-  CLEARED |-> "CLEARED",
-  ACTIVE  |-> "ACTIVE",
-  EXPIRED |-> "EXPIRED"
+ChannelMode == [
+  OPEN |-> "OPEN",
+  CHALLENGE  |-> "CHALLENGE",
+  FINALIZED |-> "FINALIZED"
 ]
 
 Range(f) == { f[x] : x \in DOMAIN f }
 StartingTurnNumber == 1
 NumParticipants == Len(Participants)
-AllowedHistories == {}
+AllowedHistories == {} \* TODO: Fill out the allowed histories.
 MainHistory == Histories[0]
-ArchiesHistory == LET start == Len(Histories[0]) - NumParticipants
+ArchiesHistory == LET start == Len(MainHistory) - NumParticipants
                   IN [i \in start..(start + NumParticipants - 1) |-> MainHistory[i]]
 
 ASSUME
@@ -31,12 +31,12 @@ ASSUME
 (* --algorithm forceMove
 
 variables
-    challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED],
+    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN],
     submittedChallenge = NULL
 
 define
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
-challengeIsPresent == challenge.status # ChallengeStatus.CLEARED
+challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 end define;
 
 macro respondWithMove(turnNumber, signer)
@@ -53,11 +53,11 @@ end macro;
 
 macro forceMove(turnNumber, signer)
 begin
-if TRUE then skip; \* TODO: Check conditions on the submitted challenge
+if TRUE then skip; \* TODO: Check conditions on the submitted channel
 else
     submittedChallenge := [
       turnNumber    |-> turnNumber,
-      status        |-> ChallengeStatus.ACTIVE
+      mode        |-> ChannelMode.CHALLENGE
     ];
 end if;
 
@@ -66,22 +66,24 @@ end macro;
 fair process adjudicator = 0
 begin
 (***************************************************************************)
-(* This process expires active challenges and records submitted            *)
-(* challenges.                                                             *)
+(* This process expires active channels and records submitted            *)
+(* channels.                                                             *)
 (***************************************************************************)
 HandleChallenge:
-while challenge.status # ChallengeStatus.EXPIRED
+while channel.mode # ChannelMode.FINALIZED
 do
     either
         ExpireChallenge: 
-            await challenge.status = ChallengeStatus.ACTIVE;
-            challenge := [ status |-> ChallengeStatus.EXPIRED ] @@ challenge;
+            await channel.mode = ChannelMode.CHALLENGE;
+            channel := [ mode |-> ChannelMode.FINALIZED ] @@ channel;
     or
         RecordChallenge:
             await submittedChallenge # NULL;
-            if challenge.status # ChallengeStatus.CLEARED then skip;
-            else
-                challenge := submittedChallenge;
+            if
+              /\ channel.mode # ChannelMode.OPEN
+              /\ channel.turnNumber < challenge.turnNumber
+            then
+                channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
                 submittedChallenge := NULL;
             end if;
     end either;
@@ -98,7 +100,7 @@ begin
 (*   - Call forceMove with any states that he currently has                *)
 (*   - Call refute with any state that he has                              *)
 (*   - Call respondWithMove or respondWithMove whenever there's an active  *)
-(*     challenge where it's his turn to move                               *)
+(*     channel where it's his turn to move                               *)
 (***************************************************************************)
 ArchieMoves: skip;
 end process;
@@ -112,7 +114,7 @@ begin
 (* time.  She can front-run any transaction an arbitrary number of times:  *)
 (* if anyone else calls an adjudicator function in a transaction tx, she   *)
 (* can then choose to submit any transaction before tx is mined.  She can  *)
-(* expire challenges whenever the current challenge doesn't allow          *)
+(* expire channels whenever the current channel doesn't allow          *)
 (***************************************************************************)
 EveMoves: skip;
 end process;
@@ -123,44 +125,45 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-VARIABLES challenge, submittedChallenge, pc
+VARIABLES channel, submittedChallenge, pc
 
 (* define statement *)
 mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
-challengeIsPresent == challenge.status # ChallengeStatus.CLEARED
+challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 
 
-vars == << challenge, submittedChallenge, pc >>
+vars == << channel, submittedChallenge, pc >>
 
 ProcSet == {0} \cup {1} \cup {2}
 
 Init == (* Global variables *)
-        /\ challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED]
+        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN]
         /\ submittedChallenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
                                         [] self = 1 -> "ArchieMoves"
                                         [] self = 2 -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
-                   /\ IF challenge.status # ChallengeStatus.EXPIRED
+                   /\ IF channel.mode # ChannelMode.FINALIZED
                          THEN /\ \/ /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
                                  \/ /\ pc' = [pc EXCEPT ![0] = "RecordChallenge"]
                          ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
-                   /\ UNCHANGED << challenge, submittedChallenge >>
+                   /\ UNCHANGED << channel, submittedChallenge >>
 
 ExpireChallenge == /\ pc[0] = "ExpireChallenge"
-                   /\ challenge.status = ChallengeStatus.ACTIVE
-                   /\ challenge' = [ status |-> ChallengeStatus.EXPIRED ] @@ challenge
+                   /\ channel.mode = ChannelMode.CHALLENGE
+                   /\ channel' = [ mode |-> ChannelMode.FINALIZED ] @@ channel
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
                    /\ UNCHANGED submittedChallenge
 
 RecordChallenge == /\ pc[0] = "RecordChallenge"
                    /\ submittedChallenge # NULL
-                   /\ IF challenge.status # ChallengeStatus.CLEARED
-                         THEN /\ TRUE
-                              /\ UNCHANGED << challenge, submittedChallenge >>
-                         ELSE /\ challenge' = submittedChallenge
+                   /\ IF /\ channel.mode # ChannelMode.OPEN
+                         /\ channel.turnNumber < challenge.turnNumber
+                         THEN /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
                               /\ submittedChallenge' = NULL
+                         ELSE /\ TRUE
+                              /\ UNCHANGED << channel, submittedChallenge >>
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
@@ -168,14 +171,14 @@ adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 ArchieMoves == /\ pc[1] = "ArchieMoves"
                /\ TRUE
                /\ pc' = [pc EXCEPT ![1] = "Done"]
-               /\ UNCHANGED << challenge, submittedChallenge >>
+               /\ UNCHANGED << channel, submittedChallenge >>
 
 archie == ArchieMoves
 
 EveMoves == /\ pc[2] = "EveMoves"
             /\ TRUE
             /\ pc' = [pc EXCEPT ![2] = "Done"]
-            /\ UNCHANGED << challenge, submittedChallenge >>
+            /\ UNCHANGED << channel, submittedChallenge >>
 
 eve == EveMoves
 
@@ -199,14 +202,14 @@ AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
 AllowedChallenges ==
   [
     turnNumber: AllowedTurnNumbers,
-    status: Range(ChallengeStatus)
+    mode: Range(ChannelMode)
   ]
 
 
 \* Safety properties
 
 \*TypeOK ==
-\*  /\ challenge \in AllowedChallenges
+\*  /\ channel \in AllowedChallenges
 
 \* TODO: Get TurnNumberDoesNotDecrease and StaysTerminated
 \* For some reason, state[p].turnNumber' is not valid
@@ -218,7 +221,7 @@ AllowedChallenges ==
   
 \* Liveness properties
 \*ProtocolTerminatesWhenChallengeDoesNotExpire == 
-\*    \/ <>[]( /\ challenge.status = ChallengeStatus.EXPIRED
+\*    \/ <>[]( /\ channel.mode = ChannelMode.FINALIZED
 \*             /\ \E p \in ParticipantIndices: state[p].type = Types.TERMINATED)
 \*    \/ (\A p \in ParticipantIndices: <>[](/\ state[p].type = Types.SUCCESS
 \*                                          /\ state[p].turnNumber = StartingTurnNumber + NumParticipants))
@@ -228,5 +231,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 26 10:23:22 MDT 2019 by andrewstewart
+\* Last modified Mon Aug 26 10:53:26 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
