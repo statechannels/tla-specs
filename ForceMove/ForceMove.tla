@@ -1,10 +1,10 @@
 ----------------------------- MODULE ForceMove -----------------------------
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
-    Alice, \* A model value
+    Archie, \* A model value
     Names, \* A set of model values
     Participants, \* A set of model values
-    NumHistories,
+    Histories,
     NULL \* A model value representing null.
 
 ChallengeStatus == [
@@ -16,12 +16,16 @@ ChallengeStatus == [
 Range(f) == { f[x] : x \in DOMAIN f }
 StartingTurnNumber == 1
 NumParticipants == Len(Participants)
+AllowedHistories == {}
+MainHistory == Histories[0]
+ArchiesHistory == LET start == Len(Histories[0]) - NumParticipants
+                  IN [i \in start..(start + NumParticipants - 1) |-> MainHistory[i]]
 
 ASSUME
-  /\ Alice \in Names
+  /\ Archie \in Names
   /\ Cardinality(Names) = NumParticipants
   /\ Len(Participants) >= 2
-  /\ NumHistories \in Nat
+  /\ Histories \in AllowedHistories
   /\ \A p \in Range(Participants) : p \in Names
             
 (* --algorithm forceMove
@@ -47,19 +51,23 @@ macro refute(turnNumber, signer)
 begin skip;
 end macro;
 
-macro forceMove(turnNumber)
+macro forceMove(turnNumber, signer)
 begin
-submittedChallenge := [
-  turnNumber    |-> turnNumber,
-  status        |-> ChallengeStatus.ACTIVE
-];
+if TRUE then skip; \* TODO: Check conditions on the submitted challenge
+else
+    submittedChallenge := [
+      turnNumber    |-> turnNumber,
+      status        |-> ChallengeStatus.ACTIVE
+    ];
+end if;
 
 end macro;
 
 fair process adjudicator = 0
 begin
 (***************************************************************************)
-(* This process expires challenges.                                        *)
+(* This process expires active challenges and records submitted            *)
+(* challenges.                                                             *)
 (***************************************************************************)
 HandleChallenge:
 while challenge.status # ChallengeStatus.EXPIRED
@@ -71,7 +79,11 @@ do
     or
         RecordChallenge:
             await submittedChallenge # NULL;
-            challenge := submittedChallenge;
+            if challenge.status # ChallengeStatus.CLEARED then skip;
+            else
+                challenge := submittedChallenge;
+                submittedChallenge := NULL;
+            end if;
     end either;
 end while;
 end process;
@@ -79,7 +91,7 @@ end process;
 fair process archie = 1
 begin
 (***************************************************************************)
-(* Alice has commitments (n - numParticipants)..(n-1).  He wants to end    *)
+(* Archie has commitments (n - numParticipants)..(n-1).  He wants to end    *)
 (* up with commitments (n - numParticipants + 1)..n.                       *)
 (*                                                                         *)
 (* He is allowed to:                                                       *)
@@ -88,7 +100,7 @@ begin
 (*   - Call respondWithMove or respondWithMove whenever there's an active  *)
 (*     challenge where it's his turn to move                               *)
 (***************************************************************************)
-AliceMoves: skip;
+ArchieMoves: skip;
 end process;
 
 fair process eve = 2
@@ -96,7 +108,7 @@ begin
 (****************************************************************************)
 (* Eve can do almost anything.  She has k different histories that each    *)
 (* contain commitments 1...(n-1).  She can sign any data with any private  *)
-(* key other than Alice's.  She can call any adjudicator function, at any  *)
+(* key other than Archie's.  She can call any adjudicator function, at any  *)
 (* time.  She can front-run any transaction an arbitrary number of times:  *)
 (* if anyone else calls an adjudicator function in a transaction tx, she   *)
 (* can then choose to submit any transaction before tx is mined.  She can  *)
@@ -126,7 +138,7 @@ Init == (* Global variables *)
         /\ challenge = [turnNumber |-> 0, challengeStatus |-> ChallengeStatus.CLEARED]
         /\ submittedChallenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
-                                        [] self = 1 -> "AliceMoves"
+                                        [] self = 1 -> "ArchieMoves"
                                         [] self = 2 -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
@@ -144,18 +156,21 @@ ExpireChallenge == /\ pc[0] = "ExpireChallenge"
 
 RecordChallenge == /\ pc[0] = "RecordChallenge"
                    /\ submittedChallenge # NULL
-                   /\ challenge' = submittedChallenge
+                   /\ IF challenge.status # ChallengeStatus.CLEARED
+                         THEN /\ TRUE
+                              /\ UNCHANGED << challenge, submittedChallenge >>
+                         ELSE /\ challenge' = submittedChallenge
+                              /\ submittedChallenge' = NULL
                    /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
-                   /\ UNCHANGED submittedChallenge
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
-AliceMoves == /\ pc[1] = "AliceMoves"
-              /\ TRUE
-              /\ pc' = [pc EXCEPT ![1] = "Done"]
-              /\ UNCHANGED << challenge, submittedChallenge >>
+ArchieMoves == /\ pc[1] = "ArchieMoves"
+               /\ TRUE
+               /\ pc' = [pc EXCEPT ![1] = "Done"]
+               /\ UNCHANGED << challenge, submittedChallenge >>
 
-archie == AliceMoves
+archie == ArchieMoves
 
 EveMoves == /\ pc[2] = "EveMoves"
             /\ TRUE
@@ -213,5 +228,5 @@ AllowedChallenges ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 23 16:38:52 MDT 2019 by andrewstewart
+\* Last modified Mon Aug 26 10:23:22 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
