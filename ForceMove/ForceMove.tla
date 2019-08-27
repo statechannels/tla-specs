@@ -96,8 +96,8 @@ end macro;
 fair process adjudicator = 0
 begin
 (***************************************************************************)
-(* This process expires active channels and records submitted            *)
-(* channels.                                                             *)
+(* This process expires active channels and records submitted              *)
+(* channels.                                                               *)
 (***************************************************************************)
 HandleChallenge:
 while channel.mode # ChannelMode.FINALIZED
@@ -123,9 +123,9 @@ begin
 (* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
 (* up with commitments (n - numParticipants + 1)..n.                       *)
 (*                                                                         *)
-(* She is allowed to:                                                       *)
-(*   - Call forceMove with any states that she currently has                *)
-(*   - Call refute with any state that she has                              *)
+(* She is allowed to:                                                      *)
+(*   - Call forceMove with any states that she currently has               *)
+(*   - Call refute with any state that she has                             *)
 (*   - Call respondWithMove or respondWithMove whenever there's an active  *)
 (*     challenge where it's her turn to move                               *)
 (***************************************************************************)
@@ -148,8 +148,8 @@ begin
 (* Eve can do almost anything.                                             *)
 (*                                                                         *)
 (*   - She can sign any data with any private key, except she cannot sign  *)
-(*     a commitment with Alice's private key when the turn number is in    *)
-(*     StartingTurnNumber..(StartingTurnNumber + NumParticipants - 1)      *)
+(*     a commitment with Alice's private key when the turn number is       *)
+(*     greater than or equal to StartingTurnNumber                         *)
 (*   - She can call any adjudicator function, at any time                  *)
 (*   - She can front-run any transaction an arbitrary number of times: if  *)
 (*     anyone else calls an adjudicator function in a transaction tx, she  *)
@@ -336,5 +336,5 @@ AliceCanProgressChannel ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 13:28:29 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 14:02:49 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
