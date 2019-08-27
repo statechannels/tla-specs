@@ -93,7 +93,7 @@ end if;
 
 end macro;
 
-fair process adjudicator = 0
+fair process adjudicator = "Adjudicator"
 begin
 (***************************************************************************)
 (* This process expires active channels and records submitted              *)
@@ -130,16 +130,19 @@ begin
 (*     challenge where it's her turn to move                               *)
 (***************************************************************************)
 AliceMoves:
-either
-    await channel.mode = ChannelMode.CHALLENGE;
-    if    TRUE then RespondWithMove: skip;
-    elsif TRUE then RespondWithAlternativeMove: skip;
-    elsif TRUE then Refute: skip;
-    end if;
-or
-    await channel.mode = ChannelMode.OPEN;
-    ForceMove: skip;
-end either;
+while channel.turnNumber < AlicesGoalTurnNumber do
+    either
+        await channel.mode = ChannelMode.CHALLENGE;
+        if    TRUE then RespondWithMove: skip;
+        elsif TRUE then RespondWithAlternativeMove: skip;
+        elsif TRUE then Refute: skip;
+        end if;
+    or
+        await channel.mode = ChannelMode.OPEN;
+        ForceMove: skip;
+    end either;
+    
+end while;
 end process;
 
 fair process eve = Eve
@@ -158,13 +161,15 @@ begin
 (*     challenge to expire.                                                *)
 (***************************************************************************)
 EveMoves:
-either
-   ForceMove: skip;
-or RespondWithMove: skip;
-or RespondWithAlternativeMove: skip;
-or Refute: skip
-or Sleep: skip;
-end either;
+while TRUE do
+    either
+       ForceMove: skip;
+    or RespondWithMove: skip;
+    or RespondWithAlternativeMove: skip;
+    or Refute: skip
+    or Sleep: skip;
+    end either;
+end while;
 end process;
 
 end algorithm;
@@ -172,10 +177,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label RespondWithMove of process alice at line 135 col 38 changed to RespondWithMove_
-\* Label RespondWithAlternativeMove of process alice at line 136 col 49 changed to RespondWithAlternativeMove_
-\* Label Refute of process alice at line 137 col 29 changed to Refute_
-\* Label ForceMove of process alice at line 141 col 16 changed to ForceMove_
+\* Label RespondWithMove of process alice at line 136 col 42 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process alice at line 137 col 53 changed to RespondWithAlternativeMove_
+\* Label Refute of process alice at line 138 col 33 changed to Refute_
+\* Label ForceMove of process alice at line 142 col 20 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -192,67 +197,69 @@ validCommitment(c) == c \in [ turnNumber: Nat ]
 
 vars == << channel, challenge, pc >>
 
-ProcSet == {0} \cup {Alice} \cup {Eve}
+ProcSet == {"Adjudicator"} \cup {Alice} \cup {Eve}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
         /\ challenge = NULL
-        /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
+        /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "HandleChallenge"
                                         [] self = Alice -> "AliceMoves"
                                         [] self = Eve -> "EveMoves"]
 
-HandleChallenge == /\ pc[0] = "HandleChallenge"
+HandleChallenge == /\ pc["Adjudicator"] = "HandleChallenge"
                    /\ IF channel.mode # ChannelMode.FINALIZED
-                         THEN /\ \/ /\ pc' = [pc EXCEPT ![0] = "ExpireChallenge"]
-                                 \/ /\ pc' = [pc EXCEPT ![0] = "RecordChallenge"]
-                         ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
+                         THEN /\ \/ /\ pc' = [pc EXCEPT !["Adjudicator"] = "ExpireChallenge"]
+                                 \/ /\ pc' = [pc EXCEPT !["Adjudicator"] = "RecordChallenge"]
+                         ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
                    /\ UNCHANGED << channel, challenge >>
 
-ExpireChallenge == /\ pc[0] = "ExpireChallenge"
+ExpireChallenge == /\ pc["Adjudicator"] = "ExpireChallenge"
                    /\ channel.mode = ChannelMode.CHALLENGE
                    /\ channel' = [ mode |-> ChannelMode.FINALIZED ] @@ channel
-                   /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
+                   /\ pc' = [pc EXCEPT !["Adjudicator"] = "HandleChallenge"]
                    /\ UNCHANGED challenge
 
-RecordChallenge == /\ pc[0] = "RecordChallenge"
+RecordChallenge == /\ pc["Adjudicator"] = "RecordChallenge"
                    /\ challenge # NULL
                    /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
                    /\ challenge' = NULL
-                   /\ pc' = [pc EXCEPT ![0] = "HandleChallenge"]
+                   /\ pc' = [pc EXCEPT !["Adjudicator"] = "HandleChallenge"]
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
 AliceMoves == /\ pc[Alice] = "AliceMoves"
-              /\ \/ /\ channel.mode = ChannelMode.CHALLENGE
-                    /\ IF TRUE
-                          THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithMove_"]
-                          ELSE /\ IF TRUE
-                                     THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithAlternativeMove_"]
+              /\ IF channel.turnNumber < AlicesGoalTurnNumber
+                    THEN /\ \/ /\ channel.mode = ChannelMode.CHALLENGE
+                               /\ IF TRUE
+                                     THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithMove_"]
                                      ELSE /\ IF TRUE
-                                                THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
-                                                ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
-                 \/ /\ channel.mode = ChannelMode.OPEN
-                    /\ pc' = [pc EXCEPT ![Alice] = "ForceMove_"]
+                                                THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithAlternativeMove_"]
+                                                ELSE /\ IF TRUE
+                                                           THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
+                                                           ELSE /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
+                            \/ /\ channel.mode = ChannelMode.OPEN
+                               /\ pc' = [pc EXCEPT ![Alice] = "ForceMove_"]
+                    ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
               /\ UNCHANGED << channel, challenge >>
 
 RespondWithMove_ == /\ pc[Alice] = "RespondWithMove_"
                     /\ TRUE
-                    /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                    /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
                     /\ UNCHANGED << channel, challenge >>
 
 RespondWithAlternativeMove_ == /\ pc[Alice] = "RespondWithAlternativeMove_"
                                /\ TRUE
-                               /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                               /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
                                /\ UNCHANGED << channel, challenge >>
 
 Refute_ == /\ pc[Alice] = "Refute_"
            /\ TRUE
-           /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+           /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
            /\ UNCHANGED << channel, challenge >>
 
 ForceMove_ == /\ pc[Alice] = "ForceMove_"
               /\ TRUE
-              /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+              /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
               /\ UNCHANGED << channel, challenge >>
 
 alice == AliceMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
@@ -268,45 +275,38 @@ EveMoves == /\ pc[Eve] = "EveMoves"
 
 ForceMove == /\ pc[Eve] = "ForceMove"
              /\ TRUE
-             /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+             /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
              /\ UNCHANGED << channel, challenge >>
 
 RespondWithMove == /\ pc[Eve] = "RespondWithMove"
                    /\ TRUE
-                   /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+                   /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
                    /\ UNCHANGED << channel, challenge >>
 
 RespondWithAlternativeMove == /\ pc[Eve] = "RespondWithAlternativeMove"
                               /\ TRUE
-                              /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+                              /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
                               /\ UNCHANGED << channel, challenge >>
 
 Refute == /\ pc[Eve] = "Refute"
           /\ TRUE
-          /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+          /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
           /\ UNCHANGED << channel, challenge >>
 
 Sleep == /\ pc[Eve] = "Sleep"
          /\ TRUE
-         /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+         /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
          /\ UNCHANGED << channel, challenge >>
 
 eve == EveMoves \/ ForceMove \/ RespondWithMove
           \/ RespondWithAlternativeMove \/ Refute \/ Sleep
 
-(* Allow infinite stuttering to prevent deadlock on termination. *)
-Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
-               /\ UNCHANGED vars
-
 Next == adjudicator \/ alice \/ eve
-           \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
         /\ WF_vars(alice)
         /\ WF_vars(eve)
-
-Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION
 
@@ -336,5 +336,5 @@ AliceCanProgressChannel ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 14:02:49 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 14:38:51 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
