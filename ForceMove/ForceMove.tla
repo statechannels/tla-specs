@@ -1,7 +1,7 @@
 ----------------------------- MODULE ForceMove -----------------------------
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
-    Archie, \* A model value
+    Alice, \* A model value
     Names, \* A set of model values
     Participants, \* A set of model values
     Histories,
@@ -31,14 +31,14 @@ Maximum(S) ==
                            rmax == Max[T \ {n}]
                        IN  IF n \geq rmax THEN n ELSE rmax
   IN  Max[S]
-ArchiesGoalTurnNumber == MainHistory.start + MainHistory.length
+AlicesGoalTurnNumber == MainHistory.start + MainHistory.length
 
 ASSUME
-  /\ Archie \notin Names
+  /\ Alice \notin Names
   /\ NumParticipants = Cardinality(Names) + 1
   /\ Len(Participants) >= 2
   /\ \A h \in Range(Histories) : h \in AllowedHistories
-  /\ Range(Participants) = { Archie } \cup Names
+  /\ Range(Participants) = { Alice } \cup Names
             
 (* --algorithm forceMove
 
@@ -123,8 +123,8 @@ do
     either
         ExpireChallenge: 
             await channel.mode = ChannelMode.CHALLENGE;
-            \* TODO: How can we ensure that Archie can clear a challenge before it expires?
-            \* Maybe we should skip this step if it's his turn.
+            \* TODO: How can we ensure that Alice can clear a challenge before it expires?
+            \* Maybe we should skip this step if it's her turn.
             channel := [ mode |-> ChannelMode.FINALIZED ] @@ channel;
     or
         RecordChallenge:
@@ -135,19 +135,19 @@ do
 end while;
 end process;
 
-fair process archie = Archie
+fair process alice = Alice
 begin
 (***************************************************************************)
-(* Archie has commitments (n - numParticipants)..(n-1).  He wants to end   *)
+(* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
 (* up with commitments (n - numParticipants + 1)..n.                       *)
 (*                                                                         *)
-(* He is allowed to:                                                       *)
-(*   - Call forceMove with any states that he currently has                *)
-(*   - Call refute with any state that he has                              *)
+(* She is allowed to:                                                       *)
+(*   - Call forceMove with any states that she currently has                *)
+(*   - Call refute with any state that she has                              *)
 (*   - Call respondWithMove or respondWithMove whenever there's an active  *)
-(*     challenge where it's his turn to move                               *)
+(*     challenge where it's her turn to move                               *)
 (***************************************************************************)
-ArchieMoves:
+AliceMoves:
 either
     await channel.mode = ChannelMode.CHALLENGE;
     if    TRUE then RespondWithMove: skip;
@@ -165,8 +165,8 @@ begin
 (***************************************************************************)
 (* Eve can do almost anything.  She has k different histories that each    *)
 (* contain commitments 1...(n-1), where one of them is the same history as *)
-(* Archie's.  She can sign any data with any private key other than        *)
-(* Archie's.  She can call any adjudicator function, at any time.  She can *)
+(* Alice's.  She can sign any data with any private key other than        *)
+(* Alice's.  She can call any adjudicator function, at any time.  She can *)
 (* front-run any transaction an arbitrary number of times: if anyone else  *)
 (* calls an adjudicator function in a transaction tx, she can then choose  *)
 (* to submit any transaction before tx is mined.  She can choose not to do *)
@@ -187,10 +187,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label RespondWithMove of process archie at line 153 col 38 changed to RespondWithMove_
-\* Label RespondWithAlternativeMove of process archie at line 154 col 49 changed to RespondWithAlternativeMove_
-\* Label Refute of process archie at line 155 col 29 changed to Refute_
-\* Label ForceMove of process archie at line 159 col 16 changed to ForceMove_
+\* Label RespondWithMove of process alice at line 153 col 38 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process alice at line 154 col 49 changed to RespondWithAlternativeMove_
+\* Label Refute of process alice at line 155 col 29 changed to Refute_
+\* Label ForceMove of process alice at line 159 col 16 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -207,13 +207,13 @@ validCommitment(c) == c \in [ turnNumber: Nat, history: HistoryIDs ]
 
 vars == << channel, challenge, pc >>
 
-ProcSet == {0} \cup {Archie} \cup (HistoryIDs)
+ProcSet == {0} \cup {Alice} \cup (HistoryIDs)
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN, history |-> MainHistory.id ]
         /\ challenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
-                                        [] self = Archie -> "ArchieMoves"
+                                        [] self = Alice -> "AliceMoves"
                                         [] self \in HistoryIDs -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
@@ -237,40 +237,40 @@ RecordChallenge == /\ pc[0] = "RecordChallenge"
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
-ArchieMoves == /\ pc[Archie] = "ArchieMoves"
-               /\ \/ /\ channel.mode = ChannelMode.CHALLENGE
-                     /\ IF TRUE
-                           THEN /\ pc' = [pc EXCEPT ![Archie] = "RespondWithMove_"]
-                           ELSE /\ IF TRUE
-                                      THEN /\ pc' = [pc EXCEPT ![Archie] = "RespondWithAlternativeMove_"]
-                                      ELSE /\ IF TRUE
-                                                 THEN /\ pc' = [pc EXCEPT ![Archie] = "Refute_"]
-                                                 ELSE /\ pc' = [pc EXCEPT ![Archie] = "Done"]
-                  \/ /\ channel.mode = ChannelMode.OPEN
-                     /\ pc' = [pc EXCEPT ![Archie] = "ForceMove_"]
-               /\ UNCHANGED << channel, challenge >>
-
-RespondWithMove_ == /\ pc[Archie] = "RespondWithMove_"
-                    /\ TRUE
-                    /\ pc' = [pc EXCEPT ![Archie] = "Done"]
-                    /\ UNCHANGED << channel, challenge >>
-
-RespondWithAlternativeMove_ == /\ pc[Archie] = "RespondWithAlternativeMove_"
-                               /\ TRUE
-                               /\ pc' = [pc EXCEPT ![Archie] = "Done"]
-                               /\ UNCHANGED << channel, challenge >>
-
-Refute_ == /\ pc[Archie] = "Refute_"
-           /\ TRUE
-           /\ pc' = [pc EXCEPT ![Archie] = "Done"]
-           /\ UNCHANGED << channel, challenge >>
-
-ForceMove_ == /\ pc[Archie] = "ForceMove_"
-              /\ TRUE
-              /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+AliceMoves == /\ pc[Alice] = "AliceMoves"
+              /\ \/ /\ channel.mode = ChannelMode.CHALLENGE
+                    /\ IF TRUE
+                          THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithMove_"]
+                          ELSE /\ IF TRUE
+                                     THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithAlternativeMove_"]
+                                     ELSE /\ IF TRUE
+                                                THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
+                                                ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                 \/ /\ channel.mode = ChannelMode.OPEN
+                    /\ pc' = [pc EXCEPT ![Alice] = "ForceMove_"]
               /\ UNCHANGED << channel, challenge >>
 
-archie == ArchieMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
+RespondWithMove_ == /\ pc[Alice] = "RespondWithMove_"
+                    /\ TRUE
+                    /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                    /\ UNCHANGED << channel, challenge >>
+
+RespondWithAlternativeMove_ == /\ pc[Alice] = "RespondWithAlternativeMove_"
+                               /\ TRUE
+                               /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                               /\ UNCHANGED << channel, challenge >>
+
+Refute_ == /\ pc[Alice] = "Refute_"
+           /\ TRUE
+           /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+           /\ UNCHANGED << channel, challenge >>
+
+ForceMove_ == /\ pc[Alice] = "ForceMove_"
+              /\ TRUE
+              /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+              /\ UNCHANGED << channel, challenge >>
+
+alice == AliceMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
              \/ Refute_ \/ ForceMove_
 
 EveMoves(self) == /\ pc[self] = "EveMoves"
@@ -314,13 +314,13 @@ eve(self) == EveMoves(self) \/ ForceMove(self) \/ RespondWithMove(self)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == adjudicator \/ archie
+Next == adjudicator \/ alice
            \/ (\E self \in HistoryIDs: eve(self))
            \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
-        /\ WF_vars(archie)
+        /\ WF_vars(alice)
         /\ \A self \in HistoryIDs : WF_vars(eve(self))
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
@@ -342,17 +342,17 @@ TypeOK ==
   /\ channel \in AllowedChannels
   
 \* Liveness properties
-ArchieCanProgressChannel ==
+AliceCanProgressChannel ==
     \/ <>[](
             /\ channel.mode = ChannelMode.FINALIZED
             /\ channel.turnNumber \in MainHistory.start..(MainHistory.start + MainHistory.length)
        )
     \/ <>[](
             /\ channel.mode = ChannelMode.OPEN
-            /\ channel.turnNumber = ArchiesGoalTurnNumber
+            /\ channel.turnNumber = AlicesGoalTurnNumber
        )
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 12:07:25 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 12:52:53 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
