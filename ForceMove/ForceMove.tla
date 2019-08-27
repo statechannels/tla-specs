@@ -1,8 +1,8 @@
 ----------------------------- MODULE ForceMove -----------------------------
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
-    Alice, \* A model value
-    Eve, \* A set of model values
+    Alice,
+    Eve,
     StartingTurnNumber,
     NumParticipants,
     NULL \* A model value representing null.
@@ -15,7 +15,8 @@ ChannelMode == [
 
 Range(f) == { f[x] : x \in DOMAIN f }
 
-AlicesGoalTurnNumber == StartingTurnNumber + NumParticipants
+LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
+AlicesGoalTurnNumber == LatestTurnNumber + 1
 Names == { Alice, Eve }
 
 ASSUME
@@ -50,7 +51,7 @@ end macro;
 macro setChallenge(commitment)
 begin
 assert validCommitment(commitment);
-channel := [ mode |-> ChannelMode.CHALLENGE ] @@ commitment;
+challenge := commitment;
 end macro;
 
 macro respondWithMove(commitment, signer)
@@ -101,19 +102,20 @@ begin
 (***************************************************************************)
 HandleChallenge:
 while channel.mode # ChannelMode.FINALIZED
-do
-    either
-        ExpireChallenge: 
-            await channel.mode = ChannelMode.CHALLENGE;
-            \* TODO: How can we ensure that Alice can clear a challenge before it expires?
-            \* Maybe we should skip this step if it's her turn.
-            channel := [ mode |-> ChannelMode.FINALIZED ] @@ channel;
-    or
+do 
+    await \/ channel.mode = ChannelMode.CHALLENGE
+          \/ challenge # NULL;
+    if challenge = NULL
+    then
+        FinalizeChannel:
+        assert channel.mode = ChannelMode.CHALLENGE;
+        channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> channel.turnNumber ];
+    else
         RecordChallenge:
-            await challenge # NULL;
-            channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
-            challenge := NULL;
-    end either;
+        assert challenge # NULL;
+        channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
+        challenge := NULL;
+    end if;
 end while;
 end process;
 
@@ -139,13 +141,13 @@ while channel.turnNumber < AlicesGoalTurnNumber do
         end if;
     or
         await channel.mode = ChannelMode.OPEN;
-        ForceMove: skip;
+        ForceMove: forceMove([ turnNumber |-> LatestTurnNumber ], Alice);
     end either;
     
 end while;
 end process;
 
-fair process eve = Eve
+process eve = Eve
 begin
 (***************************************************************************)
 (* Eve can do almost anything.                                             *)
@@ -177,10 +179,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label RespondWithMove of process alice at line 136 col 42 changed to RespondWithMove_
-\* Label RespondWithAlternativeMove of process alice at line 137 col 53 changed to RespondWithAlternativeMove_
-\* Label Refute of process alice at line 138 col 33 changed to Refute_
-\* Label ForceMove of process alice at line 142 col 20 changed to ForceMove_
+\* Label RespondWithMove of process alice at line 139 col 42 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process alice at line 140 col 53 changed to RespondWithAlternativeMove_
+\* Label Refute of process alice at line 141 col 33 changed to Refute_
+\* Label ForceMove of process alice at line 88 col 1 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -208,24 +210,29 @@ Init == (* Global variables *)
 
 HandleChallenge == /\ pc["Adjudicator"] = "HandleChallenge"
                    /\ IF channel.mode # ChannelMode.FINALIZED
-                         THEN /\ \/ /\ pc' = [pc EXCEPT !["Adjudicator"] = "ExpireChallenge"]
-                                 \/ /\ pc' = [pc EXCEPT !["Adjudicator"] = "RecordChallenge"]
+                         THEN /\ \/ channel.mode = ChannelMode.CHALLENGE
+                                 \/ challenge # NULL
+                              /\ IF challenge = NULL
+                                    THEN /\ pc' = [pc EXCEPT !["Adjudicator"] = "FinalizeChannel"]
+                                    ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "RecordChallenge"]
                          ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
                    /\ UNCHANGED << channel, challenge >>
 
-ExpireChallenge == /\ pc["Adjudicator"] = "ExpireChallenge"
-                   /\ channel.mode = ChannelMode.CHALLENGE
-                   /\ channel' = [ mode |-> ChannelMode.FINALIZED ] @@ channel
+FinalizeChannel == /\ pc["Adjudicator"] = "FinalizeChannel"
+                   /\ Assert(channel.mode = ChannelMode.CHALLENGE, 
+                             "Failure of assertion at line 112, column 9.")
+                   /\ channel' = [ mode |-> ChannelMode.FINALIZED, turnNumber |-> channel.turnNumber ]
                    /\ pc' = [pc EXCEPT !["Adjudicator"] = "HandleChallenge"]
                    /\ UNCHANGED challenge
 
 RecordChallenge == /\ pc["Adjudicator"] = "RecordChallenge"
-                   /\ challenge # NULL
+                   /\ Assert(challenge # NULL, 
+                             "Failure of assertion at line 116, column 9.")
                    /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
                    /\ challenge' = NULL
                    /\ pc' = [pc EXCEPT !["Adjudicator"] = "HandleChallenge"]
 
-adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
+adjudicator == HandleChallenge \/ FinalizeChannel \/ RecordChallenge
 
 AliceMoves == /\ pc[Alice] = "AliceMoves"
               /\ IF channel.turnNumber < AlicesGoalTurnNumber
@@ -258,9 +265,18 @@ Refute_ == /\ pc[Alice] = "Refute_"
            /\ UNCHANGED << channel, challenge >>
 
 ForceMove_ == /\ pc[Alice] = "ForceMove_"
-              /\ TRUE
+              /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
+                        "Failure of assertion at line 88, column 1 of macro called at line 145, column 20.")
+              /\ IF /\ channelOpen
+                    /\ challengerSigIsValid(Alice)
+                    /\ progressesChannel(([ turnNumber |-> LatestTurnNumber ]).turnNumber)
+                    THEN /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
+                                   "Failure of assertion at line 54, column 1 of macro called at line 145, column 20.")
+                         /\ challenge' = [ turnNumber |-> LatestTurnNumber ]
+                    ELSE /\ TRUE
+                         /\ UNCHANGED challenge
               /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
-              /\ UNCHANGED << channel, challenge >>
+              /\ UNCHANGED channel
 
 alice == AliceMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
             \/ Refute_ \/ ForceMove_
@@ -306,7 +322,6 @@ Next == adjudicator \/ alice \/ eve
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
         /\ WF_vars(alice)
-        /\ WF_vars(eve)
 
 \* END TRANSLATION
 
@@ -324,17 +339,21 @@ TypeOK ==
   /\ channel \in AllowedChannels
   
 \* Liveness properties
-AliceCanProgressChannel ==
-    \/ <>[](
-            /\ channel.mode = ChannelMode.FINALIZED
-            /\ channel.turnNumber \in StartingTurnNumber..AlicesGoalTurnNumber
-       )
-    \/ <>[](
-            /\ channel.mode = ChannelMode.OPEN
-            /\ channel.turnNumber = AlicesGoalTurnNumber
-       )
+AliceCanProgressChannel == <>[](
+    /\ channel.mode = ChannelMode.OPEN
+    /\ channel.turnNumber = AlicesGoalTurnNumber
+)
+
+FinalizedWithLatestTurnNumber == <>[](
+    /\ channel.mode = ChannelMode.FINALIZED
+    /\ channel.turnNumber = LatestTurnNumber
+)
+
+AliceDoesNotLoseFunds ==
+    \/ AliceCanProgressChannel
+    \/ FinalizedWithLatestTurnNumber
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 14:38:51 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 15:18:25 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
