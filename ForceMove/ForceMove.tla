@@ -2,10 +2,9 @@
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
     Alice, \* A model value
-    Names, \* A set of model values
-    Participants, \* A set of model values
-    Histories,
-    HistoryIDs,
+    Eve, \* A set of model values
+    StartingTurnNumber,
+    NumParticipants,
     NULL \* A model value representing null.
 
 ChannelMode == [
@@ -15,35 +14,18 @@ ChannelMode == [
 ]
 
 Range(f) == { f[x] : x \in DOMAIN f }
-NumParticipants == Len(Participants)
-AllowedHistories == [ start: Nat, length: Nat, id: HistoryIDs ] \* TODO: Fill out the allowed histories.
-MainHistory == Histories[1]
-StartingTurnNumber == MainHistory.start + MainHistory.length - 1
-                  
-Maximum(S) == 
-  (*************************************************************************)
-  (* If $S$ is a set of numbers, then this define $Maximum(S)$ to be the   *)
-  (* maximum of those numbers, or $-1$ if $S$ is empty.                    *)
-  (*************************************************************************)
-  LET Max[T \in SUBSET S] == 
-        IF T = {} THEN -1
-                  ELSE LET n    == CHOOSE n \in T : TRUE
-                           rmax == Max[T \ {n}]
-                       IN  IF n \geq rmax THEN n ELSE rmax
-  IN  Max[S]
-AlicesGoalTurnNumber == MainHistory.start + MainHistory.length
+
+AlicesGoalTurnNumber == StartingTurnNumber + NumParticipants
+Names == { Alice, Eve }
 
 ASSUME
-  /\ Alice \notin Names
-  /\ NumParticipants = Cardinality(Names) + 1
-  /\ Len(Participants) >= 2
-  /\ \A h \in Range(Histories) : h \in AllowedHistories
-  /\ Range(Participants) = { Alice } \cup Names
+  /\ StartingTurnNumber \in Nat
+  /\ NumParticipants \in Nat \ { 1 }
             
 (* --algorithm forceMove
 
 variables
-    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN, history |-> MainHistory.id ],
+    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ],
     challenge = NULL
 
 define
@@ -55,7 +37,7 @@ channelOpen ==      channel.mode = ChannelMode.OPEN
 challengerSigIsValid(challenger) == challenger \in Names
 progressesChannel(round) == TRUE
 validTransition(turnNumber, signer) == TRUE
-validCommitment(c) == c \in [ turnNumber: Nat, history: HistoryIDs ]
+validCommitment(c) == c \in [ turnNumber: Nat ]
 
 end define;
 
@@ -160,17 +142,20 @@ or
 end either;
 end process;
 
-fair process eve \in HistoryIDs
+fair process eve = Eve
 begin
 (***************************************************************************)
-(* Eve can do almost anything.  She has k different histories that each    *)
-(* contain commitments 1...(n-1), where one of them is the same history as *)
-(* Alice's.  She can sign any data with any private key other than        *)
-(* Alice's.  She can call any adjudicator function, at any time.  She can *)
-(* front-run any transaction an arbitrary number of times: if anyone else  *)
-(* calls an adjudicator function in a transaction tx, she can then choose  *)
-(* to submit any transaction before tx is mined.  She can choose not to do *)
-(* anything, thus causing any active challenge to expire.                  *)
+(* Eve can do almost anything.                                             *)
+(*                                                                         *)
+(*   - She can sign any data with any private key, except she cannot sign  *)
+(*     a commitment with Alice's private key when the turn number is in    *)
+(*     StartingTurnNumber..(StartingTurnNumber + NumParticipants - 1)      *)
+(*   - She can call any adjudicator function, at any time                  *)
+(*   - She can front-run any transaction an arbitrary number of times: if  *)
+(*     anyone else calls an adjudicator function in a transaction tx, she  *)
+(*     can then choose to submit any transaction before tx is mined.       *)
+(*   - She can choose not to do anything, thus causing any active          *)
+(*     challenge to expire.                                                *)
 (***************************************************************************)
 EveMoves:
 either
@@ -187,10 +172,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label RespondWithMove of process alice at line 153 col 38 changed to RespondWithMove_
-\* Label RespondWithAlternativeMove of process alice at line 154 col 49 changed to RespondWithAlternativeMove_
-\* Label Refute of process alice at line 155 col 29 changed to Refute_
-\* Label ForceMove of process alice at line 159 col 16 changed to ForceMove_
+\* Label RespondWithMove of process alice at line 135 col 38 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process alice at line 136 col 49 changed to RespondWithAlternativeMove_
+\* Label Refute of process alice at line 137 col 29 changed to Refute_
+\* Label ForceMove of process alice at line 141 col 16 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -202,19 +187,19 @@ channelOpen ==      channel.mode = ChannelMode.OPEN
 challengerSigIsValid(challenger) == challenger \in Names
 progressesChannel(round) == TRUE
 validTransition(turnNumber, signer) == TRUE
-validCommitment(c) == c \in [ turnNumber: Nat, history: HistoryIDs ]
+validCommitment(c) == c \in [ turnNumber: Nat ]
 
 
 vars == << channel, challenge, pc >>
 
-ProcSet == {0} \cup {Alice} \cup (HistoryIDs)
+ProcSet == {0} \cup {Alice} \cup {Eve}
 
 Init == (* Global variables *)
-        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN, history |-> MainHistory.id ]
+        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
         /\ challenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
                                         [] self = Alice -> "AliceMoves"
-                                        [] self \in HistoryIDs -> "EveMoves"]
+                                        [] self = Eve -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
                    /\ IF channel.mode # ChannelMode.FINALIZED
@@ -271,57 +256,55 @@ ForceMove_ == /\ pc[Alice] = "ForceMove_"
               /\ UNCHANGED << channel, challenge >>
 
 alice == AliceMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
-             \/ Refute_ \/ ForceMove_
+            \/ Refute_ \/ ForceMove_
 
-EveMoves(self) == /\ pc[self] = "EveMoves"
-                  /\ \/ /\ pc' = [pc EXCEPT ![self] = "ForceMove"]
-                     \/ /\ pc' = [pc EXCEPT ![self] = "RespondWithMove"]
-                     \/ /\ pc' = [pc EXCEPT ![self] = "RespondWithAlternativeMove"]
-                     \/ /\ pc' = [pc EXCEPT ![self] = "Refute"]
-                     \/ /\ pc' = [pc EXCEPT ![self] = "Sleep"]
-                  /\ UNCHANGED << channel, challenge >>
+EveMoves == /\ pc[Eve] = "EveMoves"
+            /\ \/ /\ pc' = [pc EXCEPT ![Eve] = "ForceMove"]
+               \/ /\ pc' = [pc EXCEPT ![Eve] = "RespondWithMove"]
+               \/ /\ pc' = [pc EXCEPT ![Eve] = "RespondWithAlternativeMove"]
+               \/ /\ pc' = [pc EXCEPT ![Eve] = "Refute"]
+               \/ /\ pc' = [pc EXCEPT ![Eve] = "Sleep"]
+            /\ UNCHANGED << channel, challenge >>
 
-ForceMove(self) == /\ pc[self] = "ForceMove"
+ForceMove == /\ pc[Eve] = "ForceMove"
+             /\ TRUE
+             /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+             /\ UNCHANGED << channel, challenge >>
+
+RespondWithMove == /\ pc[Eve] = "RespondWithMove"
                    /\ TRUE
-                   /\ pc' = [pc EXCEPT ![self] = "Done"]
+                   /\ pc' = [pc EXCEPT ![Eve] = "Done"]
                    /\ UNCHANGED << channel, challenge >>
 
-RespondWithMove(self) == /\ pc[self] = "RespondWithMove"
-                         /\ TRUE
-                         /\ pc' = [pc EXCEPT ![self] = "Done"]
-                         /\ UNCHANGED << channel, challenge >>
+RespondWithAlternativeMove == /\ pc[Eve] = "RespondWithAlternativeMove"
+                              /\ TRUE
+                              /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+                              /\ UNCHANGED << channel, challenge >>
 
-RespondWithAlternativeMove(self) == /\ pc[self] = "RespondWithAlternativeMove"
-                                    /\ TRUE
-                                    /\ pc' = [pc EXCEPT ![self] = "Done"]
-                                    /\ UNCHANGED << channel, challenge >>
+Refute == /\ pc[Eve] = "Refute"
+          /\ TRUE
+          /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+          /\ UNCHANGED << channel, challenge >>
 
-Refute(self) == /\ pc[self] = "Refute"
-                /\ TRUE
-                /\ pc' = [pc EXCEPT ![self] = "Done"]
-                /\ UNCHANGED << channel, challenge >>
+Sleep == /\ pc[Eve] = "Sleep"
+         /\ TRUE
+         /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+         /\ UNCHANGED << channel, challenge >>
 
-Sleep(self) == /\ pc[self] = "Sleep"
-               /\ TRUE
-               /\ pc' = [pc EXCEPT ![self] = "Done"]
-               /\ UNCHANGED << channel, challenge >>
-
-eve(self) == EveMoves(self) \/ ForceMove(self) \/ RespondWithMove(self)
-                \/ RespondWithAlternativeMove(self) \/ Refute(self)
-                \/ Sleep(self)
+eve == EveMoves \/ ForceMove \/ RespondWithMove
+          \/ RespondWithAlternativeMove \/ Refute \/ Sleep
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == adjudicator \/ alice
-           \/ (\E self \in HistoryIDs: eve(self))
+Next == adjudicator \/ alice \/ eve
            \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
         /\ WF_vars(alice)
-        /\ \A self \in HistoryIDs : WF_vars(eve(self))
+        /\ WF_vars(eve)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
@@ -331,8 +314,7 @@ AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
 AllowedChannels ==
   [
     turnNumber: AllowedTurnNumbers,
-    mode: Range(ChannelMode),
-    history: HistoryIDs
+    mode: Range(ChannelMode)
   ]
 
 
@@ -345,7 +327,7 @@ TypeOK ==
 AliceCanProgressChannel ==
     \/ <>[](
             /\ channel.mode = ChannelMode.FINALIZED
-            /\ channel.turnNumber \in MainHistory.start..(MainHistory.start + MainHistory.length)
+            /\ channel.turnNumber \in StartingTurnNumber..AlicesGoalTurnNumber
        )
     \/ <>[](
             /\ channel.mode = ChannelMode.OPEN
@@ -354,5 +336,5 @@ AliceCanProgressChannel ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 12:52:53 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 13:28:29 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
