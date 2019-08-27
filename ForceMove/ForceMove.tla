@@ -5,6 +5,7 @@ CONSTANTS
     Names, \* A set of model values
     Participants, \* A set of model values
     Histories,
+    HistoryIDs,
     NULL \* A model value representing null.
 
 ChannelMode == [
@@ -16,17 +17,28 @@ ChannelMode == [
 Range(f) == { f[x] : x \in DOMAIN f }
 StartingTurnNumber == 1
 NumParticipants == Len(Participants)
-AllowedHistories == {} \* TODO: Fill out the allowed histories.
+AllowedHistories == [ start: Nat, length: Nat, id: HistoryIDs ] \* TODO: Fill out the allowed histories.
 MainHistory == Histories[0]
-ArchiesHistory == LET start == Len(MainHistory) - NumParticipants
-                  IN [i \in start..(start + NumParticipants - 1) |-> MainHistory[i]]
+                  
+Maximum(S) == 
+  (*************************************************************************)
+  (* If $S$ is a set of numbers, then this define $Maximum(S)$ to be the   *)
+  (* maximum of those numbers, or $-1$ if $S$ is empty.                    *)
+  (*************************************************************************)
+  LET Max[T \in SUBSET S] == 
+        IF T = {} THEN -1
+                  ELSE LET n    == CHOOSE n \in T : TRUE
+                           rmax == Max[T \ {n}]
+                       IN  IF n \geq rmax THEN n ELSE rmax
+  IN  Max[S]
+ArchiesGoalTurnNumber == MainHistory.start + MainHistory.length
 
 ASSUME
-  /\ Archie \in Names
-  /\ Cardinality(Names) = NumParticipants
+  /\ Archie \notin Names
+  /\ NumParticipants = Cardinality(Names) + 1
   /\ Len(Participants) >= 2
-  /\ Histories \in AllowedHistories
-  /\ \A p \in Range(Participants) : p \in Names
+  /\ \A h \in Histories : h \in AllowedHistories
+  /\ Range(Participants) = { Archie } \cup Names
             
 (* --algorithm forceMove
 
@@ -40,8 +52,7 @@ challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen ==      channel.mode = ChannelMode.OPEN
 
 \* TODO: Fill out these checks.
-roundIsValid(round) == TRUE
-challengerSigIsValid(challenger) == TRUE
+challengerSigIsValid(challenger) == challenger \in Names
 progressesChannel(round) == TRUE
 validTransition(turnNumber, signer) == TRUE
 
@@ -66,13 +77,13 @@ then clearChallenge(turnNumber)
 end if;
 end macro;
 
-macro respondWithAlternativeMove(round, signer)
+macro respondWithAlternativeMove(turnNumber, signer)
+\* turnNumber is the turn number of the last state in the round.
 begin
 if
-    /\ roundIsValid(round)
     /\ challengeOngoing
-    /\ round[NumParticipants].turnNumber > channel.turnNumber
-then clearChallenge(round[NumParticipants].turnNumber);
+    /\ turnNumber > channel.turnNumber
+then clearChallenge(turnNumber);
 end if;
 end macro;
 
@@ -109,6 +120,8 @@ do
     either
         ExpireChallenge: 
             await channel.mode = ChannelMode.CHALLENGE;
+            \* TODO: How can we ensure that Archie can clear a challenge before it expires?
+            \* Maybe we should skip this step if it's his turn.
             channel := [ mode |-> ChannelMode.FINALIZED ] @@ channel;
     or
         RecordChallenge:
@@ -119,41 +132,62 @@ do
 end while;
 end process;
 
-fair process archie = 1
+fair process archie = Archie
 begin
 (***************************************************************************)
-(* Archie has commitments (n - numParticipants)..(n-1).  He wants to end    *)
+(* Archie has commitments (n - numParticipants)..(n-1).  He wants to end   *)
 (* up with commitments (n - numParticipants + 1)..n.                       *)
 (*                                                                         *)
 (* He is allowed to:                                                       *)
 (*   - Call forceMove with any states that he currently has                *)
 (*   - Call refute with any state that he has                              *)
 (*   - Call respondWithMove or respondWithMove whenever there's an active  *)
-(*     channel where it's his turn to move                               *)
+(*     challenge where it's his turn to move                               *)
 (***************************************************************************)
-ArchieMoves: skip;
+ArchieMoves:
+either
+    await channel.mode = ChannelMode.CHALLENGE;
+    if    TRUE then RespondWithMove: skip;
+    elsif TRUE then RespondWithAlternativeMove: skip;
+    elsif TRUE then Refute: skip;
+    end if;
+or
+    await channel.mode = ChannelMode.OPEN;
+    ForceMove: skip;
+end either;
 end process;
 
-fair process eve = 2
+fair process eve \in HistoryIDs
 begin
-(****************************************************************************)
-(* Eve can do almost anything.  She has k different histories that each    *)
-(* contain commitments 1...(n-1).  She can sign any data with any private  *)
-(* key other than Archie's.  She can call any adjudicator function, at any  *)
-(* time.  She can front-run any transaction an arbitrary number of times:  *)
-(* if anyone else calls an adjudicator function in a transaction tx, she   *)
-(* can then choose to submit any transaction before tx is mined.  She can  *)
-(* expire channels whenever the current channel doesn't allow          *)
 (***************************************************************************)
-EveMoves: skip;
+(* Eve can do almost anything.  She has k different histories that each    *)
+(* contain commitments 1...(n-1), where one of them is the same history as *)
+(* Archie's.  She can sign any data with any private key other than        *)
+(* Archie's.  She can call any adjudicator function, at any time.  She can *)
+(* front-run any transaction an arbitrary number of times: if anyone else  *)
+(* calls an adjudicator function in a transaction tx, she can then choose  *)
+(* to submit any transaction before tx is mined.  She can choose not to do *)
+(* anything, thus causing any active challenge to expire.                  *)
+(***************************************************************************)
+EveMoves:
+either
+   ForceMove: skip;
+or RespondWithMove: skip;
+or RespondWithAlternativeMove: skip;
+or Refute: skip
+or Sleep: skip;
+end either;
 end process;
-
 
 end algorithm;
 *)
 
 
 \* BEGIN TRANSLATION
+\* Label ForceMove of process archie at line 148 col 28 changed to ForceMove_
+\* Label RespondWithMove of process archie at line 149 col 34 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process archie at line 150 col 45 changed to RespondWithAlternativeMove_
+\* Label Refute of process archie at line 151 col 25 changed to Refute_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -162,22 +196,21 @@ challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen ==      channel.mode = ChannelMode.OPEN
 
 
-roundIsValid(round) == TRUE
-challengerSigIsValid(challenger) == TRUE
+challengerSigIsValid(challenger) == challenger \in Names
 progressesChannel(round) == TRUE
 validTransition(turnNumber, signer) == TRUE
 
 
 vars == << channel, challenge, pc >>
 
-ProcSet == {0} \cup {1} \cup {2}
+ProcSet == {0} \cup {Archie} \cup (HistoryIDs)
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN]
         /\ challenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = 0 -> "HandleChallenge"
-                                        [] self = 1 -> "One"
-                                        [] self = 2 -> "EveMoves"]
+                                        [] self = Archie -> "ArchieMoves"
+                                        [] self \in HistoryIDs -> "EveMoves"]
 
 HandleChallenge == /\ pc[0] = "HandleChallenge"
                    /\ IF channel.mode # ChannelMode.FINALIZED
@@ -200,72 +233,97 @@ RecordChallenge == /\ pc[0] = "RecordChallenge"
 
 adjudicator == HandleChallenge \/ ExpireChallenge \/ RecordChallenge
 
-One == /\ pc[1] = "One"
-       /\ IF /\ roundIsValid(({}))
-             /\ channelOpen
-             /\ challengerSigIsValid(Archie)
-             /\ progressesChannel(({}))
-             THEN /\ channel' = [ turnNumber |-> 2, mode |-> ChannelMode.CHALLENGE ]
-             ELSE /\ TRUE
-                  /\ UNCHANGED channel
-       /\ pc' = [pc EXCEPT ![1] = "Two"]
-       /\ UNCHANGED challenge
+ArchieMoves == /\ pc[Archie] = "ArchieMoves"
+               /\ IF TRUE
+                     THEN /\ pc' = [pc EXCEPT ![Archie] = "ForceMove_"]
+                     ELSE /\ IF TRUE
+                                THEN /\ pc' = [pc EXCEPT ![Archie] = "RespondWithMove_"]
+                                ELSE /\ IF TRUE
+                                           THEN /\ pc' = [pc EXCEPT ![Archie] = "RespondWithAlternativeMove_"]
+                                           ELSE /\ IF TRUE
+                                                      THEN /\ pc' = [pc EXCEPT ![Archie] = "Refute_"]
+                                                      ELSE /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+               /\ UNCHANGED << channel, challenge >>
 
-Two == /\ pc[1] = "Two"
-       /\ IF /\ challengeOngoing
-             /\ validTransition(Archie, 3)
-             THEN /\ channel' = [ turnNumber |-> 3, mode |-> ChannelMode.OPEN ]
-             ELSE /\ TRUE
-                  /\ UNCHANGED channel
-       /\ pc' = [pc EXCEPT ![1] = "Three"]
-       /\ UNCHANGED challenge
+ForceMove_ == /\ pc[Archie] = "ForceMove_"
+              /\ TRUE
+              /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+              /\ UNCHANGED << channel, challenge >>
 
-Three == /\ pc[1] = "Three"
-         /\ IF /\ roundIsValid(({}))
-               /\ challengeOngoing
-               /\ ({})[NumParticipants].turnNumber > channel.turnNumber
-               THEN /\ channel' = [ turnNumber |-> (({})[NumParticipants].turnNumber), mode |-> ChannelMode.OPEN ]
-               ELSE /\ TRUE
-                    /\ UNCHANGED channel
-         /\ pc' = [pc EXCEPT ![1] = "Four"]
-         /\ UNCHANGED challenge
+RespondWithMove_ == /\ pc[Archie] = "RespondWithMove_"
+                    /\ TRUE
+                    /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+                    /\ UNCHANGED << channel, challenge >>
 
-Four == /\ pc[1] = "Four"
-        /\ IF /\ challengeOngoing
-              /\ 5 > channel.turnNumber
-              THEN /\ channel' = [ turnNumber |-> (channel.turnNumber), mode |-> ChannelMode.OPEN ]
-              ELSE /\ TRUE
-                   /\ UNCHANGED channel
-        /\ pc' = [pc EXCEPT ![1] = "Done"]
-        /\ UNCHANGED challenge
+RespondWithAlternativeMove_ == /\ pc[Archie] = "RespondWithAlternativeMove_"
+                               /\ TRUE
+                               /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+                               /\ UNCHANGED << channel, challenge >>
 
-archie == One \/ Two \/ Three \/ Four
+Refute_ == /\ pc[Archie] = "Refute_"
+           /\ TRUE
+           /\ pc' = [pc EXCEPT ![Archie] = "Done"]
+           /\ UNCHANGED << channel, challenge >>
 
-EveMoves == /\ pc[2] = "EveMoves"
-            /\ TRUE
-            /\ pc' = [pc EXCEPT ![2] = "Done"]
-            /\ UNCHANGED << channel, challenge >>
+archie == ArchieMoves \/ ForceMove_ \/ RespondWithMove_
+             \/ RespondWithAlternativeMove_ \/ Refute_
 
-eve == EveMoves
+EveMoves(self) == /\ pc[self] = "EveMoves"
+                  /\ \/ /\ pc' = [pc EXCEPT ![self] = "ForceMove"]
+                     \/ /\ pc' = [pc EXCEPT ![self] = "RespondWithMove"]
+                     \/ /\ pc' = [pc EXCEPT ![self] = "RespondWithAlternativeMove"]
+                     \/ /\ pc' = [pc EXCEPT ![self] = "Refute"]
+                     \/ /\ pc' = [pc EXCEPT ![self] = "Sleep"]
+                  /\ UNCHANGED << channel, challenge >>
+
+ForceMove(self) == /\ pc[self] = "ForceMove"
+                   /\ TRUE
+                   /\ pc' = [pc EXCEPT ![self] = "Done"]
+                   /\ UNCHANGED << channel, challenge >>
+
+RespondWithMove(self) == /\ pc[self] = "RespondWithMove"
+                         /\ TRUE
+                         /\ pc' = [pc EXCEPT ![self] = "Done"]
+                         /\ UNCHANGED << channel, challenge >>
+
+RespondWithAlternativeMove(self) == /\ pc[self] = "RespondWithAlternativeMove"
+                                    /\ TRUE
+                                    /\ pc' = [pc EXCEPT ![self] = "Done"]
+                                    /\ UNCHANGED << channel, challenge >>
+
+Refute(self) == /\ pc[self] = "Refute"
+                /\ TRUE
+                /\ pc' = [pc EXCEPT ![self] = "Done"]
+                /\ UNCHANGED << channel, challenge >>
+
+Sleep(self) == /\ pc[self] = "Sleep"
+               /\ TRUE
+               /\ pc' = [pc EXCEPT ![self] = "Done"]
+               /\ UNCHANGED << channel, challenge >>
+
+eve(self) == EveMoves(self) \/ ForceMove(self) \/ RespondWithMove(self)
+                \/ RespondWithAlternativeMove(self) \/ Refute(self)
+                \/ Sleep(self)
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == adjudicator \/ archie \/ eve
+Next == adjudicator \/ archie
+           \/ (\E self \in HistoryIDs: eve(self))
            \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
         /\ WF_vars(archie)
-        /\ WF_vars(eve)
+        /\ \A self \in HistoryIDs : WF_vars(eve(self))
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION
 
 AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-AllowedChallenges ==
+AllowedChannels ==
   [
     turnNumber: AllowedTurnNumbers,
     mode: Range(ChannelMode)
@@ -274,28 +332,21 @@ AllowedChallenges ==
 
 \* Safety properties
 
-\*TypeOK ==
-\*  /\ channel \in AllowedChallenges
-
-\* TODO: Get TurnNumberDoesNotDecrease and StaysTerminated
-\* For some reason, state[p].turnNumber' is not valid
-\*TurnNumberDoesNotDecrease ==
-\*  /\ \A p \in ParticipantIndices: state[p].turnNumber' >= state[p].turnNumber
-
-\* Once a process has terminated, its state does not change.
-\*StaysTerminated == \A p \in ParticipantIndices: (Terminated(state[p]) => (state'[p] = state[p]))
+TypeOK ==
+  /\ channel \in AllowedChannels
   
 \* Liveness properties
-\*ProtocolTerminatesWhenChallengeDoesNotExpire == 
-\*    \/ <>[]( /\ channel.mode = ChannelMode.FINALIZED
-\*             /\ \E p \in ParticipantIndices: state[p].type = Types.TERMINATED)
-\*    \/ (\A p \in ParticipantIndices: <>[](/\ state[p].type = Types.SUCCESS
-\*                                          /\ state[p].turnNumber = StartingTurnNumber + NumParticipants))
-\*    \/ (\A p \in ParticipantIndices: <>[](/\ state[p].type = Types.ABORTED
-\*                                          /\ state[p].turnNumber = state[1].turnNumber))
-
+ArchieCanProgressChannel ==
+    \/ <>[](
+            /\ channel.mode = ChannelMode.FINALIZED
+            /\ channel.turnNumber \in MainHistory.start..(MainHistory.start + MainHistory.length)
+       )
+    \/ <>[](
+            /\ channel.mode = ChannelMode.OPEN
+            /\ channel.turnNumber = ArchiesGoalTurnNumber
+       )
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 26 11:29:08 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 11:20:48 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
