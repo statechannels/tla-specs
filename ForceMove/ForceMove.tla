@@ -19,11 +19,12 @@ Range(f) == { f[x] : x \in DOMAIN f }
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 AlicesGoalTurnNumber == LatestTurnNumber + 1
 Names == { Alice, Eve }
+ParticipantIDXs == 1..NumParticipants
 
 ASSUME
   /\ StartingTurnNumber \in Nat
   /\ NumParticipants \in Nat \ { 1 }
-  /\ AlicesIDX \in 1..NumParticipants
+  /\ AlicesIDX \in ParticipantIDXs
             
 (* --algorithm forceMove
 
@@ -40,21 +41,21 @@ challengerSigIsValid(turnNumber, challenger) ==
     THEN challenge = Alice
     ELSE challenger = Eve
 progressesChannel(turnNumber) == turnNumber > channel.turnNumber
-validCommitment(c) == c \in [ turnNumber: Nat ]
+validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(c, s) ==
     /\ c.turnNumber = channel.turnNumber + 1
     /\ IF alicesMove(channel.turnNumber) THEN s = Alice ELSE s = Eve
 end define;
 
-macro clearChallenge(commitment)
+macro clearChallenge(turnNumber)
 begin
-assert validCommitment(commitment);
-channel := [ mode |-> ChannelMode.OPEN ] @@ commitment;
+assert turnNumber \in Nat;
+channel := [ mode |-> ChannelMode.OPEN, turnNumber |-> turnNumber ];
 end macro;
 
 macro setChallenge(commitment)
 begin
-assert validCommitment(commitment);
+\*assert validCommitment(commitment);
 challenge := commitment;
 end macro;
 
@@ -63,7 +64,7 @@ begin
 if
     /\ challengeOngoing
     /\ validTransition(commitment, signer)
-then clearChallenge(commitment);
+then clearChallenge(commitment.turnNumber);
 end if;
 end macro;
 
@@ -73,20 +74,20 @@ begin
 if
     /\ challengeOngoing
     /\ commitment.turnNumber > channel.turnNumber
-then clearChallenge(commitment);
+then clearChallenge(commitment.turnNumber);
 end if;
 end macro;
 
-macro refute(commitment)
+macro refute(turnNumber)
 begin
 if
     /\ challengeOngoing
-    /\ commitment.turnNumber > channel.turnNumber
-then clearChallenge(commitment);
+    /\ turnNumber > channel.turnNumber
+then clearChallenge(channel.turnNumber);
 end if;
 end macro;
 
-macro forceMove(commitment, challenger)
+macro forceMove(commitment)
 begin
 assert validCommitment(commitment);
 if
@@ -114,7 +115,7 @@ do
         channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> channel.turnNumber ];
     else
         assert challenge # NULL;
-        channel := [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ];
+        channel := [ mode |-> ChannelMode.CHALLENGE ] @@ challenge;
         challenge := NULL;
     end if;
 end while;
@@ -147,15 +148,16 @@ while channel.turnNumber < AlicesGoalTurnNumber do
             /\ channel.turnNumber < StartingTurnNumber
         then
             Refute:
-                assert ~alicesMove(channel.turnNumber);
                 \* Alice has signed commitments from StartingTurnNumber up to LastTurnNumber.
                 \* She can therefore call refute with exactly one commitment, according to
                 \* the channel's current turnNumber.
-                skip; \* TODO
+                \* 1. Get the challenger's idx
+                \* 2. Refute with the proper turn number
+                refute(1);
         end if;
     or
         await channel.mode = ChannelMode.OPEN;
-        ForceMove: forceMove([ turnNumber |-> LatestTurnNumber ], Alice);
+        ForceMove: forceMove([ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ]);
     end either;
     
 end while;
@@ -180,8 +182,8 @@ EveMoves:
 while TRUE do
     either
        ForceMove:
-        with n \in NumParticipants..StartingTurnNumber do
-            forceMove([ turnNumber |-> n ], Eve);
+        with n \in NumParticipants..StartingTurnNumber, idx \in ParticipantIDXs \ { AlicesIDX } do
+            forceMove([ turnNumber |-> n, signer |-> idx ]);
         end with;
     or RespondWithMove: skip;
     or RespondWithAlternativeMove: skip;
@@ -196,9 +198,10 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-\* Label RespondWithMove of process alice at line 63 col 1 changed to RespondWithMove_
-\* Label Refute of process alice at line 148 col 33 changed to Refute_
-\* Label ForceMove of process alice at line 91 col 1 changed to ForceMove_
+\* Label RespondWithMove of process alice at line 64 col 1 changed to RespondWithMove_
+\* Label RespondWithAlternativeMove of process alice at line 146 col 54 changed to RespondWithAlternativeMove_
+\* Label Refute of process alice at line 83 col 1 changed to Refute_
+\* Label ForceMove of process alice at line 92 col 1 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -210,7 +213,7 @@ challengerSigIsValid(turnNumber, challenger) ==
     THEN challenge = Alice
     ELSE challenger = Eve
 progressesChannel(turnNumber) == turnNumber > channel.turnNumber
-validCommitment(c) == c \in [ turnNumber: Nat ]
+validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(c, s) ==
     /\ c.turnNumber = channel.turnNumber + 1
     /\ IF alicesMove(channel.turnNumber) THEN s = Alice ELSE s = Eve
@@ -237,8 +240,8 @@ HandleChallenge == /\ pc["Adjudicator"] = "HandleChallenge"
                                          /\ channel' = [ mode |-> ChannelMode.FINALIZED, turnNumber |-> channel.turnNumber ]
                                          /\ UNCHANGED challenge
                                     ELSE /\ Assert(challenge # NULL, 
-                                                   "Failure of assertion at line 118, column 9.")
-                                         /\ channel' = [ turnNumber |-> challenge.turnNumber, mode |-> ChannelMode.CHALLENGE ]
+                                                   "Failure of assertion at line 117, column 9.")
+                                         /\ channel' = [ mode |-> ChannelMode.CHALLENGE ] @@ challenge
                                          /\ challenge' = NULL
                               /\ pc' = [pc EXCEPT !["Adjudicator"] = "HandleChallenge"]
                          ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
@@ -252,9 +255,11 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
                                /\ IF /\ alicesMove(channel.turnNumber)
                                      /\ channel.turnNumber >= StartingTurnNumber
                                      THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithMove_"]
-                                     ELSE /\ IF TRUE
-                                                THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
-                                                ELSE /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
+                                     ELSE /\ IF FALSE
+                                                THEN /\ pc' = [pc EXCEPT ![Alice] = "RespondWithAlternativeMove_"]
+                                                ELSE /\ IF /\ channel.turnNumber < StartingTurnNumber
+                                                           THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
+                                                           ELSE /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
                             \/ /\ channel.mode = ChannelMode.OPEN
                                /\ pc' = [pc EXCEPT ![Alice] = "ForceMove_"]
                     ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
@@ -263,33 +268,43 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
 RespondWithMove_ == /\ pc[Alice] = "RespondWithMove_"
                     /\ IF /\ challengeOngoing
                           /\ validTransition(([ turnNumber |-> channel.turnNumber + 1 ]), Alice)
-                          THEN /\ Assert(validCommitment(([ turnNumber |-> channel.turnNumber + 1 ])), 
-                                         "Failure of assertion at line 51, column 1 of macro called at line 146, column 17.")
-                               /\ channel' = [ mode |-> ChannelMode.OPEN ] @@ ([ turnNumber |-> channel.turnNumber + 1 ])
+                          THEN /\ Assert((([ turnNumber |-> channel.turnNumber + 1 ]).turnNumber) \in Nat, 
+                                         "Failure of assertion at line 52, column 1 of macro called at line 145, column 17.")
+                               /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (([ turnNumber |-> channel.turnNumber + 1 ]).turnNumber) ]
                           ELSE /\ TRUE
                                /\ UNCHANGED channel
                     /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
                     /\ UNCHANGED challenge
 
+RespondWithAlternativeMove_ == /\ pc[Alice] = "RespondWithAlternativeMove_"
+                               /\ TRUE
+                               /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
+                               /\ UNCHANGED << channel, challenge >>
+
 Refute_ == /\ pc[Alice] = "Refute_"
-           /\ TRUE
+           /\ IF /\ challengeOngoing
+                 /\ 1 > channel.turnNumber
+                 THEN /\ Assert((channel.turnNumber) \in Nat, 
+                                "Failure of assertion at line 52, column 1 of macro called at line 156, column 17.")
+                      /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (channel.turnNumber) ]
+                 ELSE /\ TRUE
+                      /\ UNCHANGED channel
            /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
-           /\ UNCHANGED << channel, challenge >>
+           /\ UNCHANGED challenge
 
 ForceMove_ == /\ pc[Alice] = "ForceMove_"
-              /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
-                        "Failure of assertion at line 91, column 1 of macro called at line 152, column 20.")
+              /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ])), 
+                        "Failure of assertion at line 92, column 1 of macro called at line 160, column 20.")
               /\ IF /\ channelOpen
-                    /\ progressesChannel(([ turnNumber |-> LatestTurnNumber ]).turnNumber)
-                    THEN /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
-                                   "Failure of assertion at line 57, column 1 of macro called at line 152, column 20.")
-                         /\ challenge' = [ turnNumber |-> LatestTurnNumber ]
+                    /\ progressesChannel(([ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ]).turnNumber)
+                    THEN /\ challenge' = [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ]
                     ELSE /\ TRUE
                          /\ UNCHANGED challenge
               /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
               /\ UNCHANGED channel
 
-alice == AliceMoves \/ RespondWithMove_ \/ Refute_ \/ ForceMove_
+alice == AliceMoves \/ RespondWithMove_ \/ RespondWithAlternativeMove_
+            \/ Refute_ \/ ForceMove_
 
 EveMoves == /\ pc[Eve] = "EveMoves"
             /\ \/ /\ pc' = [pc EXCEPT ![Eve] = "ForceMove"]
@@ -301,15 +316,14 @@ EveMoves == /\ pc[Eve] = "EveMoves"
 
 ForceMove == /\ pc[Eve] = "ForceMove"
              /\ \E n \in NumParticipants..StartingTurnNumber:
-                  /\ Assert(validCommitment(([ turnNumber |-> n ])), 
-                            "Failure of assertion at line 91, column 1 of macro called at line 178, column 13.")
-                  /\ IF /\ channelOpen
-                        /\ progressesChannel(([ turnNumber |-> n ]).turnNumber)
-                        THEN /\ Assert(validCommitment(([ turnNumber |-> n ])), 
-                                       "Failure of assertion at line 57, column 1 of macro called at line 178, column 13.")
-                             /\ challenge' = [ turnNumber |-> n ]
-                        ELSE /\ TRUE
-                             /\ UNCHANGED challenge
+                  \E idx \in ParticipantIDXs \ { AlicesIDX }:
+                    /\ Assert(validCommitment(([ turnNumber |-> n, signer |-> idx ])), 
+                              "Failure of assertion at line 92, column 1 of macro called at line 186, column 13.")
+                    /\ IF /\ channelOpen
+                          /\ progressesChannel(([ turnNumber |-> n, signer |-> idx ]).turnNumber)
+                          THEN /\ challenge' = [ turnNumber |-> n, signer |-> idx ]
+                          ELSE /\ TRUE
+                               /\ UNCHANGED challenge
              /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
              /\ UNCHANGED channel
 
@@ -346,17 +360,18 @@ Spec == /\ Init /\ [][Next]_vars
 \* END TRANSLATION
 
 AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-AllowedChannels ==
-  [
-    turnNumber: AllowedTurnNumbers,
-    mode: Range(ChannelMode)
-  ]
+AllowedChannels == {}
+  \cup [ turnNumber: AllowedTurnNumbers, mode: { ChannelMode.OPEN, ChannelMode.FINALIZED } ]
+  \cup [ turnNumber: AllowedTurnNumbers, mode: { ChannelMode.CHALLENGE }, signer: ParticipantIDXs ]
+AllowedChallenges == { NULL }
+  \cup [ turnNumber: AllowedTurnNumbers, signer: ParticipantIDXs ]
 
 
 \* Safety properties
 
 TypeOK ==
   /\ channel \in AllowedChannels
+  /\ challenge \in AllowedChallenges
   
 \* Liveness properties
 AliceCanProgressChannel == <>[](
@@ -375,5 +390,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 28 11:39:40 MDT 2019 by andrewstewart
+\* Last modified Wed Aug 28 12:11:37 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
