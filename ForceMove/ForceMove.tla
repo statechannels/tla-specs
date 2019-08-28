@@ -41,7 +41,7 @@ challengerSigIsValid(turnNumber, challenger) ==
     IF alicesMove(turnNumber)
     THEN challenge = Alice
     ELSE challenger = Eve
-progressesChannel(turnNumber) == turnNumber >= channel.turnNumber
+progressesChannel(turnNumber) == turnNumber > channel.turnNumber
 validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(c, s) ==
     /\ c.turnNumber = channel.turnNumber + 1
@@ -204,7 +204,7 @@ challengerSigIsValid(turnNumber, challenger) ==
     IF alicesMove(turnNumber)
     THEN challenge = Alice
     ELSE challenger = Eve
-progressesChannel(turnNumber) == turnNumber >= channel.turnNumber
+progressesChannel(turnNumber) == turnNumber > channel.turnNumber
 validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(c, s) ==
     /\ c.turnNumber = channel.turnNumber + 1
@@ -383,5 +383,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 28 12:51:37 MDT 2019 by andrewstewart
+\* Last modified Wed Aug 28 12:52:17 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
