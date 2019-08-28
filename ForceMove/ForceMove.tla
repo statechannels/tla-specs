@@ -80,7 +80,6 @@ end if;
 end macro;
 
 macro respondWithAlternativeMove(commitment)
-\* turnNumber is the turn number of the last state in the round.
 begin
 if
     /\ challengeOngoing
@@ -178,16 +177,10 @@ begin
 (***************************************************************************)
 EveMoves:
 while AliceCanTakeAction do
-\*    either
-       ForceMove:
-        with n \in NumParticipants..StartingTurnNumber, idx \in ParticipantIDXs \ { AlicesIDX } do
-            forceMove([ turnNumber |-> n, signer |-> idx ]);
-        end with;
-\*    or RespondWithMove: skip;
-\*    or RespondWithAlternativeMove: skip;
-\*    or Refute: skip
-\*    or Sleep: skip;
-\*    end either;
+   ForceMove:
+    with n \in NumParticipants..StartingTurnNumber, idx \in ParticipantIDXs \ { AlicesIDX } do
+        forceMove([ turnNumber |-> n, signer |-> idx ]);
+    end with;
 end while;
 end process;
 
@@ -310,7 +303,7 @@ ForceMove == /\ pc[Eve] = "ForceMove"
              /\ \E n \in NumParticipants..StartingTurnNumber:
                   \E idx \in ParticipantIDXs \ { AlicesIDX }:
                     /\ Assert(validCommitment(([ turnNumber |-> n, signer |-> idx ])), 
-                              "Failure of assertion at line 103, column 1 of macro called at line 184, column 13.")
+                              "Failure of assertion at line 103, column 1 of macro called at line 183, column 9.")
                     /\ IF /\ channelOpen
                           /\ progressesChannel(([ turnNumber |-> n, signer |-> idx ]).turnNumber)
                           THEN /\ challenge' = [ turnNumber |-> n, signer |-> idx ]
@@ -366,5 +359,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 28 14:18:54 MDT 2019 by andrewstewart
+\* Last modified Wed Aug 28 14:20:50 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
