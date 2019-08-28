@@ -5,6 +5,7 @@ CONSTANTS
     Eve,
     StartingTurnNumber,
     NumParticipants,
+    AlicesIDX,
     NULL \* A model value representing null.
 
 ChannelMode == [
@@ -22,6 +23,7 @@ Names == { Alice, Eve }
 ASSUME
   /\ StartingTurnNumber \in Nat
   /\ NumParticipants \in Nat \ { 1 }
+  /\ AlicesIDX \in 1..NumParticipants
             
 (* --algorithm forceMove
 
@@ -30,14 +32,14 @@ variables
     challenge = NULL
 
 define
-mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
+alicesMove(turnNumber) == (turnNumber % NumParticipants) = AlicesIDX
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
-channelOpen ==      channel.mode = ChannelMode.OPEN
-
-\* TODO: Fill out these checks.
-challengerSigIsValid(challenger) == challenger \in Names
-progressesChannel(round) == TRUE
-validTransition(turnNumber, signer) == TRUE
+channelOpen == channel.mode = ChannelMode.OPEN
+challengerSigIsValid(turnNumber, challenger) ==
+    IF alicesMove(turnNumber)
+    THEN challenge = Alice
+    ELSE challenger = Eve
+progressesChannel(turnNumber) == turnNumber > channel.turnNumber
 validCommitment(c) == c \in [ turnNumber: Nat ]
 
 end define;
@@ -87,7 +89,6 @@ begin
 assert validCommitment(commitment);
 if
     /\ channelOpen
-    /\ challengerSigIsValid(challenger)
     /\ progressesChannel(commitment.turnNumber)
 then setChallenge(commitment)
 end if;
@@ -147,7 +148,7 @@ while channel.turnNumber < AlicesGoalTurnNumber do
 end while;
 end process;
 
-process eve = Eve
+fair process eve = Eve
 begin
 (***************************************************************************)
 (* Eve can do almost anything.                                             *)
@@ -182,18 +183,18 @@ end algorithm;
 \* Label RespondWithMove of process alice at line 139 col 42 changed to RespondWithMove_
 \* Label RespondWithAlternativeMove of process alice at line 140 col 53 changed to RespondWithAlternativeMove_
 \* Label Refute of process alice at line 141 col 33 changed to Refute_
-\* Label ForceMove of process alice at line 88 col 1 changed to ForceMove_
+\* Label ForceMove of process alice at line 89 col 1 changed to ForceMove_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
-mover(turnNumber) == 1 + ((turnNumber-1) % NumParticipants)
+alicesMove(turnNumber) == (turnNumber % NumParticipants) = AlicesIDX
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
-channelOpen ==      channel.mode = ChannelMode.OPEN
-
-
-challengerSigIsValid(challenger) == challenger \in Names
-progressesChannel(round) == TRUE
-validTransition(turnNumber, signer) == TRUE
+channelOpen == channel.mode = ChannelMode.OPEN
+challengerSigIsValid(turnNumber, challenger) ==
+    IF alicesMove(turnNumber)
+    THEN challenge = Alice
+    ELSE challenger = Eve
+progressesChannel(turnNumber) == turnNumber > channel.turnNumber
 validCommitment(c) == c \in [ turnNumber: Nat ]
 
 
@@ -266,12 +267,11 @@ Refute_ == /\ pc[Alice] = "Refute_"
 
 ForceMove_ == /\ pc[Alice] = "ForceMove_"
               /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
-                        "Failure of assertion at line 88, column 1 of macro called at line 145, column 20.")
+                        "Failure of assertion at line 89, column 1 of macro called at line 145, column 20.")
               /\ IF /\ channelOpen
-                    /\ challengerSigIsValid(Alice)
                     /\ progressesChannel(([ turnNumber |-> LatestTurnNumber ]).turnNumber)
                     THEN /\ Assert(validCommitment(([ turnNumber |-> LatestTurnNumber ])), 
-                                   "Failure of assertion at line 54, column 1 of macro called at line 145, column 20.")
+                                   "Failure of assertion at line 55, column 1 of macro called at line 145, column 20.")
                          /\ challenge' = [ turnNumber |-> LatestTurnNumber ]
                     ELSE /\ TRUE
                          /\ UNCHANGED challenge
@@ -322,6 +322,7 @@ Next == adjudicator \/ alice \/ eve
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
         /\ WF_vars(alice)
+        /\ WF_vars(eve)
 
 \* END TRANSLATION
 
@@ -355,5 +356,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 27 15:18:25 MDT 2019 by andrewstewart
+\* Last modified Tue Aug 27 23:01:47 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
