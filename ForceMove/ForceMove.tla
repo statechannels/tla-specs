@@ -32,7 +32,7 @@ ASSUME
 (* --algorithm forceMove
 
 variables
-    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ],
+    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN, challenge |-> NULL ],
     challenge = NULL
 
 define
@@ -58,7 +58,7 @@ end define;
 macro clearChallenge(turnNumber)
 begin
 assert turnNumber \in Nat;
-channel := [ mode |-> ChannelMode.OPEN, turnNumber |-> turnNumber ];
+channel := [ mode |-> ChannelMode.OPEN, turnNumber |-> turnNumber, challenge |-> NULL ];
 end macro;
 
 macro setChallenge(commitment)
@@ -215,7 +215,7 @@ vars == << channel, challenge, pc >>
 ProcSet == {"Adjudicator"} \cup {Alice} \cup {Eve}
 
 Init == (* Global variables *)
-        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
+        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN, challenge |-> NULL ]
         /\ challenge = NULL
         /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "Adjudicator"
                                         [] self = Alice -> "AliceMoves"
@@ -249,7 +249,7 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
                                     /\ UNCHANGED challenge
                                ELSE /\ IF challenge = NULL
                                           THEN /\ Assert(validCommitment(([ turnNumber |-> AlicesGoalTurnNumber, signer |-> AlicesIDX ])), 
-                                                         "Failure of assertion at line 103, column 1 of macro called at line 159, column 9.")
+                                                         "Failure of assertion at line 102, column 1 of macro called at line 158, column 9.")
                                                /\ IF /\ channelOpen
                                                      /\ progressesChannel(([ turnNumber |-> AlicesGoalTurnNumber, signer |-> AlicesIDX ]).turnNumber)
                                                      THEN /\ challenge' = [ turnNumber |-> AlicesGoalTurnNumber, signer |-> AlicesIDX ]
@@ -266,11 +266,11 @@ Respond == /\ pc[Alice] = "Respond"
            /\ IF /\ challengeOngoing
                  /\ validTransition(([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]))
                  THEN /\ Assert((([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]).turnNumber) \in Nat, 
-                                "Failure of assertion at line 60, column 1 of macro called at line 146, column 23.")
-                      /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]).turnNumber) ]
+                                "Failure of assertion at line 60, column 1 of macro called at line 145, column 23.")
+                      /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]).turnNumber), challenge |-> NULL ]
                  ELSE /\ PrintT((<<channel.challenge, ([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]), validTransition(([ turnNumber |-> channel.challenge.turnNumber, signer |-> AlicesIDX ]))>>))
                       /\ Assert(FALSE, 
-                                "Failure of assertion at line 78, column 5 of macro called at line 146, column 23.")
+                                "Failure of assertion at line 78, column 5 of macro called at line 145, column 23.")
                       /\ UNCHANGED channel
            /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
            /\ UNCHANGED challenge
@@ -279,8 +279,8 @@ Refute == /\ pc[Alice] = "Refute"
           /\ IF /\ challengeOngoing
                 /\ (CHOOSE n \in AlicesCommitments : n % NumParticipants = channel.challenge.signer % NumParticipants) > channel.turnNumber
                 THEN /\ Assert((channel.turnNumber) \in Nat, 
-                               "Failure of assertion at line 60, column 1 of macro called at line 153, column 21.")
-                     /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (channel.turnNumber) ]
+                               "Failure of assertion at line 60, column 1 of macro called at line 152, column 21.")
+                     /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> (channel.turnNumber), challenge |-> NULL ]
                 ELSE /\ TRUE
                      /\ UNCHANGED channel
           /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
@@ -303,7 +303,7 @@ ForceMove == /\ pc[Eve] = "ForceMove"
              /\ \E n \in NumParticipants..StartingTurnNumber:
                   \E idx \in ParticipantIDXs \ { AlicesIDX }:
                     /\ Assert(validCommitment(([ turnNumber |-> n, signer |-> idx ])), 
-                              "Failure of assertion at line 103, column 1 of macro called at line 183, column 9.")
+                              "Failure of assertion at line 102, column 1 of macro called at line 182, column 9.")
                     /\ IF /\ channelOpen
                           /\ progressesChannel(([ turnNumber |-> n, signer |-> idx ]).turnNumber)
                           THEN /\ challenge' = [ turnNumber |-> n, signer |-> idx ]
@@ -331,16 +331,14 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 \* END TRANSLATION
 
 AllowedTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-AllowedChallenges == [ turnNumber: AllowedTurnNumbers, signer: ParticipantIDXs ]
-AllowedChannels == {}
-  \cup [ turnNumber: AllowedTurnNumbers, mode: { ChannelMode.OPEN, ChannelMode.FINALIZED } ]
-  \cup [ turnNumber: AllowedTurnNumbers, mode: { ChannelMode.CHALLENGE }, challenge: AllowedChallenges ]
+AllowedChallenges == [ turnNumber: AllowedTurnNumbers, signer: ParticipantIDXs ] \cup { NULL }
+AllowedChannels == [ turnNumber: AllowedTurnNumbers, mode: Range(ChannelMode), challenge: AllowedChallenges ]
 
 \* Safety properties
 
 TypeOK ==
-  /\ channel \in AllowedChannels
-  /\ challenge \in { NULL } \cup AllowedChallenges
+  /\ channel   \in AllowedChannels
+  /\ challenge \in AllowedChallenges
   
 \* Liveness properties
 AliceCanProgressChannel == <>[](
@@ -359,5 +357,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 28 14:20:50 MDT 2019 by andrewstewart
+\* Last modified Thu Aug 29 16:34:00 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
