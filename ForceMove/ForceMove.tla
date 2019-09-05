@@ -377,12 +377,12 @@ AliceDoesNotLoseFunds ==
     \/ FinalizedWithLatestTurnNumber
 
 \* By checking this property, we can verify Alice's ability to front-run and replace Alice's pending challenge with another challenge.
-EveDoesNotFrontRun == [][
+EveDoesNotFrontRunChallenges == [][
     \/ challenge = NULL
     \/ challenge' = NULL
 ]_<<challenge>>
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 03 14:59:29 PDT 2019 by andrewstewart
+\* Last modified Thu Sep 05 10:58:01 PDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
