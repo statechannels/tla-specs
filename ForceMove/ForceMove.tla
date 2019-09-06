@@ -149,7 +149,7 @@ begin
 AliceMoves:
 while AliceCanTakeAction
 do
-    if channel.mode = ChannelMode.CHALLENGE then
+    if challengeOngoing then
         if
             /\ channel.challenge.turnNumber < StartingTurnNumber
         then
@@ -167,7 +167,7 @@ do
             Respond:
                 respondWithMove([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]);
         else
-            \* If the challenge wasn't cleared, then Alice's strategy has failed, finalizing the channel.
+            \* Alice has run out of allowed actions, resulting in the channel being finalized
             Finalize:
                 channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel;
         end if;
@@ -194,10 +194,27 @@ begin
 (***************************************************************************)
 EveMoves:
 while EveCanTakeAction do
-   ForceMove:
-    with n \in NumParticipants..LatestTurnNumber, idx \in ParticipantIDXs \ { AlicesIDX } do
-        forceMove([ turnNumber |-> n, signer |-> idx ]);
-    end with;
+    either ForceMove:
+        with n \in NumParticipants..LatestTurnNumber, idx \in ParticipantIDXs \ { AlicesIDX } do
+            forceMove([ turnNumber |-> n, signer |-> idx ]);
+        end with;
+    or Respond:
+        if
+            /\ challengeOngoing
+            /\ ~AlicesMove(channel.challenge.turnNumber)
+        then skip;
+\*            respondWithMove([
+\*                turnNumber |-> channel.challenge.turnNumber + 1,
+\*                signer |-> ParticipantIDX(channel.challenge.turnNumber)
+\*            ]);
+        end if;
+    or Refute:
+        if
+            /\ challengeOngoing
+            /\ ~AlicesMove(channel.challenge.turnNumber)
+        then skip;
+        end if;
+    end either;
 end while;
 end process;
 
@@ -206,6 +223,8 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
+\* Label Refute of process alice at line 97 col 1 changed to Refute_
+\* Label Respond of process alice at line 77 col 1 changed to Respond_
 VARIABLES channel, challenge, pc
 
 (* define statement *)
@@ -259,12 +278,12 @@ adjudicator == Adjudicator \/ HandleChallenge
 
 AliceMoves == /\ pc[Alice] = "AliceMoves"
               /\ IF AliceCanTakeAction
-                    THEN /\ IF channel.mode = ChannelMode.CHALLENGE
+                    THEN /\ IF challengeOngoing
                                THEN /\ IF /\ channel.challenge.turnNumber < StartingTurnNumber
-                                          THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute"]
+                                          THEN /\ pc' = [pc EXCEPT ![Alice] = "Refute_"]
                                           ELSE /\ IF /\ channel.challenge.turnNumber >= StartingTurnNumber
                                                      /\ AlicesMove(channel.challenge.turnNumber+1)
-                                                     THEN /\ pc' = [pc EXCEPT ![Alice] = "Respond"]
+                                                     THEN /\ pc' = [pc EXCEPT ![Alice] = "Respond_"]
                                                      ELSE /\ pc' = [pc EXCEPT ![Alice] = "Finalize"]
                                     /\ UNCHANGED challenge
                                ELSE /\ IF challenge = NULL
@@ -282,41 +301,43 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
                          /\ UNCHANGED challenge
               /\ UNCHANGED channel
 
-Refute == /\ pc[Alice] = "Refute"
-          /\ IF /\ challengeOngoing
-                /\ (CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer) > channel.turnNumber[ParticipantIDX((CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer))]
-                THEN /\ channel' =            [
-                                       mode |-> ChannelMode.OPEN,
-                                       challenge  |-> NULL,
-                                       turnNumber |-> [i \in {ParticipantIDX((CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer))} |-> (CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer)] @@ channel.turnNumber
-                                   ]
-                ELSE /\ TRUE
-                     /\ UNCHANGED channel
-          /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
-          /\ UNCHANGED challenge
-
-Respond == /\ pc[Alice] = "Respond"
+Refute_ == /\ pc[Alice] = "Refute_"
            /\ IF /\ challengeOngoing
-                 /\ validTransition(([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]))
-                 THEN /\ Assert((([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber) \in Nat, 
-                                "Failure of assertion at line 64, column 1 of macro called at line 168, column 17.")
-                      /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber))], challenge |-> NULL ]
-                 ELSE /\ Assert(FALSE, 
-                                "Failure of assertion at line 82, column 5 of macro called at line 168, column 17.")
+                 /\ (CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer) > channel.turnNumber[ParticipantIDX((CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer))]
+                 THEN /\ channel' =            [
+                                        mode |-> ChannelMode.OPEN,
+                                        challenge  |-> NULL,
+                                        turnNumber |-> [i \in {ParticipantIDX((CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer))} |-> (CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer)] @@ channel.turnNumber
+                                    ]
+                 ELSE /\ TRUE
                       /\ UNCHANGED channel
            /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
            /\ UNCHANGED challenge
+
+Respond_ == /\ pc[Alice] = "Respond_"
+            /\ IF /\ challengeOngoing
+                  /\ validTransition(([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]))
+                  THEN /\ Assert((([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber) \in Nat, 
+                                 "Failure of assertion at line 64, column 1 of macro called at line 168, column 17.")
+                       /\ channel' = [ mode |-> ChannelMode.OPEN, turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber))], challenge |-> NULL ]
+                  ELSE /\ Assert(FALSE, 
+                                 "Failure of assertion at line 82, column 5 of macro called at line 168, column 17.")
+                       /\ UNCHANGED channel
+            /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
+            /\ UNCHANGED challenge
 
 Finalize == /\ pc[Alice] = "Finalize"
             /\ channel' = [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel
             /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
             /\ UNCHANGED challenge
 
-alice == AliceMoves \/ Refute \/ Respond \/ Finalize
+alice == AliceMoves \/ Refute_ \/ Respond_ \/ Finalize
 
 EveMoves == /\ pc[Eve] = "EveMoves"
             /\ IF EveCanTakeAction
-                  THEN /\ pc' = [pc EXCEPT ![Eve] = "ForceMove"]
+                  THEN /\ \/ /\ pc' = [pc EXCEPT ![Eve] = "ForceMove"]
+                          \/ /\ pc' = [pc EXCEPT ![Eve] = "Respond"]
+                          \/ /\ pc' = [pc EXCEPT ![Eve] = "Refute"]
                   ELSE /\ pc' = [pc EXCEPT ![Eve] = "Done"]
             /\ UNCHANGED << channel, challenge >>
 
@@ -324,7 +345,7 @@ ForceMove == /\ pc[Eve] = "ForceMove"
              /\ \E n \in NumParticipants..LatestTurnNumber:
                   \E idx \in ParticipantIDXs \ { AlicesIDX }:
                     /\ Assert(validCommitment(([ turnNumber |-> n, signer |-> idx ])), 
-                              "Failure of assertion at line 111, column 1 of macro called at line 199, column 9.")
+                              "Failure of assertion at line 111, column 1 of macro called at line 199, column 13.")
                     /\ IF /\ channelOpen
                           /\ progressesChannel(([ turnNumber |-> n, signer |-> idx ]))
                           THEN /\ challenge' = [ turnNumber |-> n, signer |-> idx ]
@@ -333,7 +354,23 @@ ForceMove == /\ pc[Eve] = "ForceMove"
              /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
              /\ UNCHANGED channel
 
-eve == EveMoves \/ ForceMove
+Respond == /\ pc[Eve] = "Respond"
+           /\ IF /\ challengeOngoing
+                 /\ ~AlicesMove(channel.challenge.turnNumber)
+                 THEN /\ TRUE
+                 ELSE /\ TRUE
+           /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
+           /\ UNCHANGED << channel, challenge >>
+
+Refute == /\ pc[Eve] = "Refute"
+          /\ IF /\ challengeOngoing
+                /\ ~AlicesMove(channel.challenge.turnNumber)
+                THEN /\ TRUE
+                ELSE /\ TRUE
+          /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
+          /\ UNCHANGED << channel, challenge >>
+
+eve == EveMoves \/ ForceMove \/ Respond \/ Refute
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
@@ -384,5 +421,5 @@ EveDoesNotFrontRunChallenges == [][
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Sep 05 10:58:01 PDT 2019 by andrewstewart
+\* Last modified Thu Sep 05 18:46:25 PDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
