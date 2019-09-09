@@ -100,7 +100,8 @@ then
 channel := [
     mode |-> ChannelMode.OPEN,
     challenge  |-> NULL,
-    turnNumber |-> [i \in {ParticipantIDX(turnNumber)} |-> turnNumber] @@ channel.turnNumber  
+    turnNumber |-> [i \in {ParticipantIDX(turnNumber)} |-> turnNumber] @@ channel.turnNumber
+\*    turnNumber |-> channel.turnNumber \* With this effect, eve can infinitely grief
 ];
 end if;
 end macro;
@@ -279,7 +280,7 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
                                     /\ UNCHANGED submittedTX
                                ELSE /\ IF submittedTX # NULL
                                           THEN /\ Assert(submittedTX = NULL, 
-                                                         "Failure of assertion at line 120, column 1 of macro called at line 179, column 9.")
+                                                         "Failure of assertion at line 121, column 1 of macro called at line 180, column 9.")
                                                /\ submittedTX' = [ commitment |-> ([ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ]), type |-> TX_Type.FORCE_MOVE ]
                                           ELSE /\ TRUE
                                                /\ UNCHANGED submittedTX
@@ -295,6 +296,7 @@ Refute == /\ pc[Alice] = "Refute"
                                        mode |-> ChannelMode.OPEN,
                                        challenge  |-> NULL,
                                        turnNumber |-> [i \in {ParticipantIDX((CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer))} |-> (CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer)] @@ channel.turnNumber
+                                   
                                    ]
                 ELSE /\ TRUE
                      /\ UNCHANGED channel
@@ -305,14 +307,14 @@ Respond == /\ pc[Alice] = "Respond"
            /\ IF /\ challengeOngoing
                  /\ validTransition(([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]))
                  THEN /\ Assert((([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber) \in Nat, 
-                                "Failure of assertion at line 66, column 1 of macro called at line 172, column 17.")
+                                "Failure of assertion at line 66, column 1 of macro called at line 173, column 17.")
                       /\ channel' =            [
                                         mode |-> ChannelMode.OPEN,
                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (([ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]).turnNumber))],
                                         challenge |-> NULL
                                     ]
                  ELSE /\ Assert(FALSE, 
-                                "Failure of assertion at line 81, column 5 of macro called at line 172, column 17.")
+                                "Failure of assertion at line 81, column 5 of macro called at line 173, column 17.")
                       /\ UNCHANGED channel
            /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
            /\ UNCHANGED submittedTX
@@ -388,5 +390,5 @@ AliceDoesNotLoseFunds ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 09 15:22:49 MDT 2019 by andrewstewart
+\* Last modified Mon Sep 09 15:36:18 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
