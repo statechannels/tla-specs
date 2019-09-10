@@ -31,7 +31,6 @@ AlicesCommitments == StartingTurnNumber..LatestTurnNumber
 
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
 AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = AlicesIDX
-
 Maximum(a,b) == IF a > b THEN a ELSE b
 
 ASSUME
@@ -44,7 +43,8 @@ ASSUME
 
 variables
     channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ],
-    submittedTX = NULL
+    submittedTX = NULL,
+    numForces = 0
 
 define
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
@@ -115,6 +115,7 @@ if
     /\ progressesChannel(commitment)
 then
     channel := [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment ] @@ channel;
+\*    numForces := numForces + 1;
 end if;
 end macro;
 
@@ -230,7 +231,7 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-VARIABLES channel, submittedTX, pc
+VARIABLES channel, submittedTX, numForces, pc
 
 (* define statement *)
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
@@ -251,13 +252,14 @@ Refutable(n) == TRUE
     /\ n > channel.challenge.turnNumber
 
 
-vars == << channel, submittedTX, pc >>
+vars == << channel, submittedTX, numForces, pc >>
 
 ProcSet == {"Adjudicator"} \cup {Alice} \cup {Eve}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ]
         /\ submittedTX = NULL
+        /\ numForces = 0
         /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "Adjudicator"
                                         [] self = Alice -> "AliceMoves"
                                         [] self = Eve -> "EveMoves"]
@@ -287,7 +289,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 70, column 1 of macro called at line 134, column 58.")
+                                                                                           "Failure of assertion at line 71, column 1 of macro called at line 136, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -296,7 +298,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 135, column 14.")
+                                                                                "Failure of assertion at line 137, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -304,6 +306,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                           /\ pc' = [pc EXCEPT !["Adjudicator"] = "Adjudicator"]
                      ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
                           /\ UNCHANGED << channel, submittedTX >>
+               /\ UNCHANGED numForces
 
 adjudicator == Adjudicator
 
@@ -311,7 +314,7 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
               /\ IF AliceCanTakeAction
                     THEN /\ pc' = [pc EXCEPT ![Alice] = "AliceTakesAction"]
                     ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
-              /\ UNCHANGED << channel, submittedTX >>
+              /\ UNCHANGED << channel, submittedTX, numForces >>
 
 AliceTakesAction == /\ pc[Alice] = "AliceTakesAction"
                     /\ IF /\ submittedTX = NULL
@@ -338,6 +341,7 @@ AliceTakesAction == /\ pc[Alice] = "AliceTakesAction"
                                           /\ UNCHANGED submittedTX
                                /\ UNCHANGED channel
                     /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
+                    /\ UNCHANGED numForces
 
 alice == AliceMoves \/ AliceTakesAction
 
@@ -345,7 +349,7 @@ EveMoves == /\ pc[Eve] = "EveMoves"
             /\ IF EveCanTakeAction
                   THEN /\ pc' = [pc EXCEPT ![Eve] = "EveTakesAction"]
                   ELSE /\ pc' = [pc EXCEPT ![Eve] = "Done"]
-            /\ UNCHANGED << channel, submittedTX >>
+            /\ UNCHANGED << channel, submittedTX, numForces >>
 
 EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                   /\ \/ /\ \E n \in NumParticipants..LatestTurnNumber:
@@ -420,9 +424,14 @@ FinalizedWithLatestTurnNumber == <>[](
 
 AliceDoesNotLoseFunds ==
     \/ AliceCanProgressChannel
-    \/ FinalizedWithLatestTurnNumber 
+    \/ FinalizedWithLatestTurnNumber
+
+\* By incrementing numForces in the forceMove macro, we can keep a count of how many forceMoves have been played.
+\* Behaviours that violate this invariant are therefore behaviours where Eve is successfully grieving Alice.
+\* It's useful to violate this invariant to be able to inspect such traces.
+EveCanGrieveAlice == numForces < 5
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 09 19:01:11 MDT 2019 by andrewstewart
+\* Last modified Mon Sep 09 19:49:41 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
