@@ -1,8 +1,6 @@
 ----------------------------- MODULE ForceMove -----------------------------
 EXTENDS Integers, Sequences, FiniteSets, TLC
 CONSTANTS
-    Alice,
-    Eve,
     StartingTurnNumber,
     NumParticipants,
     AlicesIDX,
@@ -139,7 +137,7 @@ while AlicesGoalUnmet \/ submittedTX # NULL do
 end while;
 end process;
 
-fair process alice = Alice
+fair process alice = "Alice"
 begin
 (****************************************************************************
 Alice has commitments (n - numParticipants)..(n-1).  She wants to end
@@ -179,7 +177,7 @@ while AlicesGoalUnmet do
 end while;
 end process;
 
-fair process eve = Eve
+fair process eve = "Eve"
 begin
 (***************************************************************************)
 (* Eve can do almost anything.                                             *)
@@ -244,15 +242,15 @@ AlicesGoalUnmet ==
 
 vars == << channel, submittedTX, numForces, pc >>
 
-ProcSet == {"Adjudicator"} \cup {Alice} \cup {Eve}
+ProcSet == {"Adjudicator"} \cup {"Alice"} \cup {"Eve"}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ]
         /\ submittedTX = NULL
         /\ numForces = 0
         /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "Adjudicator"
-                                        [] self = Alice -> "A"
-                                        [] self = Eve -> "E"]
+                                        [] self = "Alice" -> "A"
+                                        [] self = "Eve" -> "E"]
 
 Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                /\ IF AlicesGoalUnmet \/ submittedTX # NULL
@@ -282,7 +280,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 70, column 1 of macro called at line 134, column 58.")
+                                                                                           "Failure of assertion at line 68, column 1 of macro called at line 132, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -291,7 +289,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 135, column 14.")
+                                                                                "Failure of assertion at line 133, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -303,7 +301,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
 
 adjudicator == Adjudicator
 
-A == /\ pc[Alice] = "A"
+A == /\ pc["Alice"] = "A"
      /\ IF AlicesGoalUnmet
            THEN /\ submittedTX = NULL
                 /\ IF challengeOngoing
@@ -315,7 +313,7 @@ A == /\ pc[Alice] = "A"
                                               THEN /\ LET response == turnNumber + 1 IN
                                                         LET commitment == [ turnNumber |-> response, signer |-> ParticipantIDX(response) ] IN
                                                           /\ Assert(response \in AlicesCommitments, 
-                                                                    "Failure of assertion at line 168, column 17.")
+                                                                    "Failure of assertion at line 166, column 17.")
                                                           /\ submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
@@ -323,14 +321,14 @@ A == /\ pc[Alice] = "A"
                                                  commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
                                                  type |-> TX_Type.FORCE_MOVE
                                              ]
-                /\ pc' = [pc EXCEPT ![Alice] = "A"]
-           ELSE /\ pc' = [pc EXCEPT ![Alice] = "Done"]
+                /\ pc' = [pc EXCEPT !["Alice"] = "A"]
+           ELSE /\ pc' = [pc EXCEPT !["Alice"] = "Done"]
                 /\ UNCHANGED submittedTX
      /\ UNCHANGED << channel, numForces >>
 
 alice == A
 
-E == /\ pc[Eve] = "E"
+E == /\ pc["Eve"] = "E"
      /\ IF AlicesGoalUnmet
            THEN /\ \/ /\ \E n \in NumParticipants..LatestTurnNumber:
                            \E idx \in ParticipantIDXs \ { AlicesIDX }:
@@ -345,7 +343,7 @@ E == /\ pc[Eve] = "E"
                                               IF /\ challengeOngoing
                                                  /\ validTransition(commitment)
                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                "Failure of assertion at line 70, column 1 of macro called at line 209, column 12.")
+                                                                "Failure of assertion at line 68, column 1 of macro called at line 207, column 12.")
                                                       /\ channel' =            [
                                                                         mode |-> ChannelMode.OPEN,
                                                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -378,8 +376,8 @@ E == /\ pc[Eve] = "E"
                                  /\ UNCHANGED channel
                    \/ /\ TRUE
                       /\ UNCHANGED channel
-                /\ pc' = [pc EXCEPT ![Eve] = "E"]
-           ELSE /\ pc' = [pc EXCEPT ![Eve] = "Done"]
+                /\ pc' = [pc EXCEPT !["Eve"] = "E"]
+           ELSE /\ pc' = [pc EXCEPT !["Eve"] = "Done"]
                 /\ UNCHANGED channel
      /\ UNCHANGED << submittedTX, numForces >>
 
@@ -424,8 +422,8 @@ AliceCanProgressChannel == <>[](
 \* We can verify that Alice can never directly modify the channel with this property, with
 \* the exception that she can finalize the channel.
 AliceMustSubmitTransactions == [][
-        /\ pc[Alice] = "AliceTakesAction"
-        /\ pc'[Alice] = "AliceMoves"
+        /\ pc["Alice"] = "AliceTakesAction"
+        /\ pc'["Alice"] = "AliceMoves"
     => UNCHANGED channel
 ]_<<pc, channel>>
 
@@ -453,5 +451,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 16:58:25 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 17:35:35 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
