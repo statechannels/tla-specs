@@ -166,15 +166,13 @@ while AlicesGoalUnmet do AliceTakesAction:
             \* She can therefore call refute with exactly one commitment, according to
             \* the channel's current turnNumber.
             with turnNumber = CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer
-            do submittedTX := [ type |-> TX_Type.REFUTE, turnNumber |-> turnNumber];
-            end with;
+            do submittedTX := [ type |-> TX_Type.REFUTE, turnNumber |-> turnNumber]; end with;
         elsif
             /\ channel.challenge.turnNumber >= StartingTurnNumber
             /\ AlicesMove(channel.challenge.turnNumber+1)
         then
                 with commitment = [ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]
-                do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ];
-                end with;
+                do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ]; end with;
         else
         \* Alice has run out of allowed actions, resulting in the channel being finalized
             channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel;
@@ -219,7 +217,13 @@ while AlicesGoalUnmet do EveTakesAction:
             turnNumber = channel.challenge.turnNumber + 1,
             commitment = [ turnNumber |-> turnNumber, signer |-> ParticipantIDX(turnNumber)]
         do respondWithMove(commitment); end with;
-        or with turnNumber \in 0..LatestTurnNumber \cup { n \in Nat : n > LatestTurnNumber /\ ~AlicesMove(n) }
+        or with turnNumber \in {}
+            \* Eve can refute with any state she has. Alice has seen all of these states.
+            \cup 0..LatestTurnNumber
+            \* Since Eve can sign arbitrary data with any private key other than Alice's,
+            \* she can also refute with arbitrarily states, as long as it's not Alice's
+            \* turn in that state.
+            \cup { n \in Nat : ~AlicesMove(n) }
         do refute(turnNumber); end with;
         end either;
         end if;
@@ -365,7 +369,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 72, column 1 of macro called at line 221, column 12.")
+                                                                  "Failure of assertion at line 72, column 1 of macro called at line 219, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -373,7 +377,13 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                                       ]
                                                    ELSE /\ TRUE
                                                         /\ UNCHANGED channel
-                                      \/ /\ \E turnNumber \in 0..LatestTurnNumber \cup { n \in Nat : n > LatestTurnNumber /\ ~AlicesMove(n) }:
+                                      \/ /\ \E turnNumber \in                    {}
+                                                              
+                                                              \cup 0..LatestTurnNumber
+                                                              
+                                                              
+                                                              
+                                                              \cup { n \in Nat : ~AlicesMove(n) }:
                                               IF /\ challengeOngoing
                                                  /\ ParticipantIDX(turnNumber) = channel.challenge.signer
                                                  /\ turnNumber > channel.turnNumber[ParticipantIDX(turnNumber)]
@@ -475,5 +485,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 12:22:32 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 12:29:00 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
