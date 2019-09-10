@@ -90,6 +90,7 @@ macro refute(turnNumber)
 begin
 if
     /\ challengeOngoing
+    /\ ParticipantIDX(turnNumber) = channel.challenge.signer
     /\ turnNumber > channel.turnNumber[ParticipantIDX(turnNumber)]
 then
 channel := [
@@ -274,6 +275,7 @@ AdjudicatorProcesses == /\ pc["Adjudicator"] = "AdjudicatorProcesses"
                                                          /\ UNCHANGED channel
                                          ELSE /\ IF submittedTX.type = TX_Type.REFUTE
                                                     THEN /\ IF /\ challengeOngoing
+                                                               /\ ParticipantIDX((submittedTX.turnNumber)) = channel.challenge.signer
                                                                /\ (submittedTX.turnNumber) > channel.turnNumber[ParticipantIDX((submittedTX.turnNumber))]
                                                                THEN /\ channel' =            [
                                                                                       mode |-> ChannelMode.OPEN,
@@ -289,7 +291,7 @@ AdjudicatorProcesses == /\ pc["Adjudicator"] = "AdjudicatorProcesses"
                                                                THEN /\ IF /\ challengeOngoing
                                                                           /\ validTransition((submittedTX.commitment))
                                                                           THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                         "Failure of assertion at line 73, column 1 of macro called at line 135, column 58.")
+                                                                                         "Failure of assertion at line 72, column 1 of macro called at line 135, column 58.")
                                                                                /\ channel' =            [
                                                                                                  mode |-> ChannelMode.OPEN,
                                                                                                  turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -363,7 +365,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 73, column 1 of macro called at line 221, column 12.")
+                                                                  "Failure of assertion at line 72, column 1 of macro called at line 221, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -373,6 +375,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                         /\ UNCHANGED channel
                                       \/ /\ \E turnNumber \in 0..LatestTurnNumber \cup { n \in Nat : n > LatestTurnNumber /\ ~AlicesMove(n) }:
                                               IF /\ challengeOngoing
+                                                 /\ ParticipantIDX(turnNumber) = channel.challenge.signer
                                                  /\ turnNumber > channel.turnNumber[ParticipantIDX(turnNumber)]
                                                  THEN /\ channel' =            [
                                                                         mode |-> ChannelMode.OPEN,
@@ -472,5 +475,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 12:06:45 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 12:22:32 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
