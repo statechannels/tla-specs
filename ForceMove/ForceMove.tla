@@ -187,7 +187,7 @@ do AliceTakesAction:
                 end with;
         else
         \* Alice has run out of allowed actions, resulting in the channel being finalized
-                channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel;
+            channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel;
         end if;
     elsif
         /\ submittedTX = NULL
@@ -301,7 +301,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 71, column 1 of macro called at line 136, column 58.")
+                                                                                           "Failure of assertion at line 79, column 1 of macro called at line 144, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -310,7 +310,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 137, column 14.")
+                                                                                "Failure of assertion at line 145, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -377,7 +377,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 71, column 1 of macro called at line 223, column 12.")
+                                                                  "Failure of assertion at line 79, column 1 of macro called at line 231, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -454,7 +454,17 @@ AliceDoesNotLoseFunds ==
 \* It's useful to violate this invariant to be able to inspect such traces.
 EveCanGrieveAlice == numForces < 5
 
+\* We can verify that Alice can never directly modify the channel with this property, with
+\* the exception that she can finalize the channel.
+AliceMustSubmitTransactions == [][
+        /\ pc[Alice] = "AliceTakesAction"
+        /\ pc'[Alice] = "AliceMoves"
+    =>
+        \/ UNCHANGED channel
+        \/ channel'.mode = ChannelMode.FINALIZED
+]_<<pc, channel>>
+
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 09 19:49:41 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 11:12:10 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
