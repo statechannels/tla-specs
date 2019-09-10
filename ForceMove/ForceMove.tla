@@ -124,7 +124,14 @@ if
     /\ progressesChannel(commitment)
 then
     channel := [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment ] @@ channel;
-\*    numForces := numForces + 1;
+    
+    \* We can't specify any properties that require any memory of the
+    \* behaviour up to the certain point (ie. the behaviour has passed through state X seven times in a row)
+    \* we have to embed the "memory" of the behaviour in the state itself.
+    \* By incrementing the number of forceMoves that have been called, we
+    \* multiply the number of distinct states by a large amount, but we can specify properties like
+    \* "Eve has not submitted 5 force moves"
+    \*    numForces := numForces + 1;
 end if;
 end macro;
 
@@ -301,7 +308,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 79, column 1 of macro called at line 144, column 58.")
+                                                                                           "Failure of assertion at line 79, column 1 of macro called at line 151, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -310,7 +317,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 145, column 14.")
+                                                                                "Failure of assertion at line 152, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -377,7 +384,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 79, column 1 of macro called at line 231, column 12.")
+                                                                  "Failure of assertion at line 79, column 1 of macro called at line 238, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -448,12 +455,8 @@ FinalizedWithLatestTurnNumber == <>[](
 AliceDoesNotLoseFunds ==
     \/ AliceCanProgressChannel
     \/ FinalizedWithLatestTurnNumber
-
-\* By incrementing numForces in the forceMove macro, we can keep a count of how many forceMoves have been played.
-\* Behaviours that violate this invariant are therefore behaviours where Eve is successfully grieving Alice.
-\* It's useful to violate this invariant to be able to inspect such traces.
-EveCanGrieveAlice == numForces < 5
-
+    
+    
 \* We can verify that Alice can never directly modify the channel with this property, with
 \* the exception that she can finalize the channel.
 AliceMustSubmitTransactions == [][
@@ -464,7 +467,30 @@ AliceMustSubmitTransactions == [][
         \/ channel'.mode = ChannelMode.FINALIZED
 ]_<<pc, channel>>
 
+\* It's useful to specify the following invariants or properties, since we can
+\* inspect the trace of behaviours that violate them to verify that the model
+\* checker is working as intended.
+
+EveCanGrieveAlice == numForces < 5
+
+
+\* Behaviours that violate this property exhibit Eve's ability to front-run:
+\* Alice always submits a transaction that would change the channel state, if
+\* it took effect immediately. Therefore, if the channel state is not changed
+\* when a pending transaction is processed, Eve must have called a function
+\* already.
+EveCannotFrontRun ==[][
+        /\ submittedTX # NULL
+        /\ submittedTX' = NULL
+    =>
+        \/ channel' # channel
+        \* By uncommenting the following line, one can inspect traces where Eve might
+        \* have front-run Alice multiple times
+\*        \/ numForces <= 3
+]_<<submittedTX, channel>>
+
+
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 11:12:10 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 11:46:03 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
