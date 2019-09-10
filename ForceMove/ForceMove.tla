@@ -39,7 +39,16 @@ ASSUME
   /\ AlicesIDX \in ParticipantIDXs
   /\ ~AlicesMove(LatestTurnNumber + 1)
             
-(* --algorithm submitForceMove
+(* --algorithm forceMove
+
+(***************************************************************************)
+(* Alice calls adjudicator functions by submitting a pending transaction   *)
+(* with the function type and arguments.  The adjudicator processes this   *)
+(* transaction and modifies the channel state on her behalf.  However,     *)
+(* when Eve calls functions, she directly modifies the channel state.      *)
+(* This emulates a reality where Eve can consistently front-run Alice's    *)
+(* transactions, when desired.                                             *)
+(***************************************************************************)
 
 variables
     channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ],
@@ -122,7 +131,7 @@ end macro;
 fair process adjudicator = "Adjudicator"
 begin
 (***************************************************************************)
-(* This process records submitted channels.                                *)
+(* This process records submitted transactions.                            *)
 (***************************************************************************)
 Adjudicator:
 while
@@ -142,16 +151,16 @@ end process;
 
 fair process alice = Alice
 begin
-(***************************************************************************)
-(* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
-(* up with commitments (n - numParticipants + 1)..n.                       *)
-(*                                                                         *)
-(* She is allowed to:                                                      *)
-(*   - Call submitForceMove with any states that she currently has               *)
-(*   - Call refute with any state that she has                             *)
-(*   - Call respondWithMove or respondWithMove whenever there's an active  *)
-(*     challenge where it's her turn to move                               *)
-(***************************************************************************)
+(****************************************************************************
+Alice has commitments (n - numParticipants)..(n-1).  She wants to end
+up with commitments (n - numParticipants + 1)..n.
+
+She is allowed to:
+  - Call submitForceMove with any states that she currently has
+  - Call refute with any state that she has
+  - Call respondWithMove or respondWithMove whenever there's an active
+    challenge where it's her turn to move
+****************************************************************************)
 AliceMoves:
 while AliceCanTakeAction
 do AliceTakesAction:
