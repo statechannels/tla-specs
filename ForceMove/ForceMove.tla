@@ -227,6 +227,7 @@ while AlicesGoalUnmet do EveTakesAction:
         do refute(turnNumber); end with;
         end either;
         end if;
+    or skip; \* Eve goes offline
     end either;
 end while;
 end process;
@@ -399,6 +400,8 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                       /\ UNCHANGED channel
                               ELSE /\ TRUE
                                    /\ UNCHANGED channel
+                     \/ /\ TRUE
+                        /\ UNCHANGED channel
                   /\ pc' = [pc EXCEPT ![Eve] = "EveMoves"]
                   /\ UNCHANGED << submittedTX, numForces >>
 
@@ -485,5 +488,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 12:29:00 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 12:30:23 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
