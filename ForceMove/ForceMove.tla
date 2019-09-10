@@ -18,7 +18,8 @@ ChannelMode == [
 TX_Type == [
   FORCE_MOVE |-> "FORCE_MOVE",
   REFUTE     |-> "REFUTE",
-  RESPOND    |-> "RESPOND"
+  RESPOND    |-> "RESPOND",
+  TIMEOUT    |-> "TIMEOUT"
 ]
 
 Range(f) == { f[x] : x \in DOMAIN f }
@@ -92,6 +93,7 @@ if
     /\ challengeOngoing
     /\ ParticipantIDX(turnNumber) = channel.challenge.signer
     /\ turnNumber > channel.turnNumber[ParticipantIDX(turnNumber)]
+    /\ turnNumber > channel.challenge.turnNumber
 then
 channel := [
     mode |-> ChannelMode.OPEN,
@@ -122,17 +124,28 @@ then
 end if;
 end macro;
 
+macro timeout()
+begin
+if challengeOngoing then
+channel := [
+    mode |-> ChannelMode.FINALIZED,
+    turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber]
+] @@ channel;
+end if;
+end macro;
+
 fair process adjudicator = "Adjudicator"
 begin
 (***************************************************************************)
 (* This process records submitted transactions.                            *)
 (***************************************************************************)
 Adjudicator:
-while AlicesGoalUnmet do AdjudicatorProcesses:
+while AlicesGoalUnmet \/ submittedTX # NULL do AdjudicatorProcesses:
     if submittedTX # NULL then
         if    submittedTX.type = TX_Type.FORCE_MOVE then forceMove(submittedTX.commitment);
         elsif submittedTX.type = TX_Type.REFUTE     then refute(submittedTX.turnNumber);
         elsif submittedTX.type = TX_Type.RESPOND    then respondWithMove(submittedTX.commitment);
+        elsif submittedTX.type = TX_Type.TIMEOUT    then timeout();
         else assert FALSE;
         end if;
         submittedTX := NULL;
@@ -154,9 +167,8 @@ She is allowed to:
 ****************************************************************************)
 AliceMoves:
 while AlicesGoalUnmet do AliceTakesAction:
-    if
-        /\ submittedTX = NULL
-        /\ challengeOngoing
+    await submittedTX = NULL;
+    if challengeOngoing
     then
         if
             /\ channel.challenge.turnNumber < StartingTurnNumber
@@ -174,13 +186,10 @@ while AlicesGoalUnmet do AliceTakesAction:
                 with commitment = [ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]
                 do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ]; end with;
         else
-        \* Alice has run out of allowed actions, resulting in the channel being finalized
-            channel := [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel;
+        \* Alice has run out of allowed actions.
+            submittedTX := [ type |-> TX_Type.TIMEOUT ];
         end if;
-    elsif
-        /\ submittedTX = NULL
-        /\ ~challengeOngoing
-    then 
+    else 
         submittedTX := [
             commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
             type |-> TX_Type.FORCE_MOVE
@@ -265,7 +274,7 @@ Init == (* Global variables *)
                                         [] self = Eve -> "EveMoves"]
 
 Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
-               /\ IF AlicesGoalUnmet
+               /\ IF AlicesGoalUnmet \/ submittedTX # NULL
                      THEN /\ pc' = [pc EXCEPT !["Adjudicator"] = "AdjudicatorProcesses"]
                      ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
                /\ UNCHANGED << channel, submittedTX, numForces >>
@@ -282,6 +291,7 @@ AdjudicatorProcesses == /\ pc["Adjudicator"] = "AdjudicatorProcesses"
                                                     THEN /\ IF /\ challengeOngoing
                                                                /\ ParticipantIDX((submittedTX.turnNumber)) = channel.challenge.signer
                                                                /\ (submittedTX.turnNumber) > channel.turnNumber[ParticipantIDX((submittedTX.turnNumber))]
+                                                               /\ (submittedTX.turnNumber) > channel.challenge.turnNumber
                                                                THEN /\ channel' =            [
                                                                                       mode |-> ChannelMode.OPEN,
                                                                                       challenge  |-> NULL,
@@ -296,7 +306,7 @@ AdjudicatorProcesses == /\ pc["Adjudicator"] = "AdjudicatorProcesses"
                                                                THEN /\ IF /\ challengeOngoing
                                                                           /\ validTransition((submittedTX.commitment))
                                                                           THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                         "Failure of assertion at line 72, column 1 of macro called at line 135, column 58.")
+                                                                                         "Failure of assertion at line 73, column 1 of macro called at line 147, column 58.")
                                                                                /\ channel' =            [
                                                                                                  mode |-> ChannelMode.OPEN,
                                                                                                  turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -304,9 +314,17 @@ AdjudicatorProcesses == /\ pc["Adjudicator"] = "AdjudicatorProcesses"
                                                                                              ]
                                                                           ELSE /\ TRUE
                                                                                /\ UNCHANGED channel
-                                                               ELSE /\ Assert(FALSE, 
-                                                                              "Failure of assertion at line 136, column 14.")
-                                                                    /\ UNCHANGED channel
+                                                               ELSE /\ IF submittedTX.type = TX_Type.TIMEOUT
+                                                                          THEN /\ IF challengeOngoing
+                                                                                     THEN /\ channel' =            [
+                                                                                                            mode |-> ChannelMode.FINALIZED,
+                                                                                                            turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber]
+                                                                                                        ] @@ channel
+                                                                                     ELSE /\ TRUE
+                                                                                          /\ UNCHANGED channel
+                                                                          ELSE /\ Assert(FALSE, 
+                                                                                         "Failure of assertion at line 149, column 14.")
+                                                                               /\ UNCHANGED channel
                                    /\ submittedTX' = NULL
                               ELSE /\ TRUE
                                    /\ UNCHANGED << channel, submittedTX >>
@@ -322,31 +340,23 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
               /\ UNCHANGED << channel, submittedTX, numForces >>
 
 AliceTakesAction == /\ pc[Alice] = "AliceTakesAction"
-                    /\ IF /\ submittedTX = NULL
-                          /\ challengeOngoing
+                    /\ submittedTX = NULL
+                    /\ IF challengeOngoing
                           THEN /\ IF /\ channel.challenge.turnNumber < StartingTurnNumber
                                      /\ submittedTX = NULL
                                      THEN /\ LET turnNumber == CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer IN
                                                submittedTX' = [ type |-> TX_Type.REFUTE, turnNumber |-> turnNumber]
-                                          /\ UNCHANGED channel
                                      ELSE /\ IF /\ channel.challenge.turnNumber >= StartingTurnNumber
                                                 /\ AlicesMove(channel.challenge.turnNumber+1)
                                                 THEN /\ LET commitment == [ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ] IN
                                                           submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
-                                                     /\ UNCHANGED channel
-                                                ELSE /\ channel' = [ mode |-> ChannelMode.FINALIZED, turnNumber |-> [p \in ParticipantIDXs |-> channel.challenge.turnNumber] ] @@ channel
-                                                     /\ UNCHANGED submittedTX
-                          ELSE /\ IF /\ submittedTX = NULL
-                                     /\ ~challengeOngoing
-                                     THEN /\ submittedTX' =                [
-                                                                commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
-                                                                type |-> TX_Type.FORCE_MOVE
-                                                            ]
-                                     ELSE /\ TRUE
-                                          /\ UNCHANGED submittedTX
-                               /\ UNCHANGED channel
+                                                ELSE /\ submittedTX' = [ type |-> TX_Type.TIMEOUT ]
+                          ELSE /\ submittedTX' =                [
+                                                     commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
+                                                     type |-> TX_Type.FORCE_MOVE
+                                                 ]
                     /\ pc' = [pc EXCEPT ![Alice] = "AliceMoves"]
-                    /\ UNCHANGED numForces
+                    /\ UNCHANGED << channel, numForces >>
 
 alice == AliceMoves \/ AliceTakesAction
 
@@ -370,7 +380,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 72, column 1 of macro called at line 219, column 12.")
+                                                                  "Failure of assertion at line 73, column 1 of macro called at line 228, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -388,6 +398,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                               IF /\ challengeOngoing
                                                  /\ ParticipantIDX(turnNumber) = channel.challenge.signer
                                                  /\ turnNumber > channel.turnNumber[ParticipantIDX(turnNumber)]
+                                                 /\ turnNumber > channel.challenge.turnNumber
                                                  THEN /\ channel' =            [
                                                                         mode |-> ChannelMode.OPEN,
                                                                         challenge  |-> NULL,
@@ -429,6 +440,7 @@ AllowedCommitments == [ turnNumber: AllowedTurnNumbers, signer: ParticipantIDXs 
 AllowedTransactions == { NULL }
     \cup [ type: { TX_Type.FORCE_MOVE, TX_Type.RESPOND }, commitment: AllowedCommitments ]
     \cup [ type: { TX_Type.REFUTE }, turnNumber: AllowedTurnNumbers ]
+    \cup [ type: { TX_Type.TIMEOUT } ]
 
 AllowedChannels == [ turnNumber: [ParticipantIDXs -> Nat] , mode: Range(ChannelMode), challenge: AllowedCommitments \cup { NULL } ]
 
@@ -459,9 +471,7 @@ AliceDoesNotLoseFunds ==
 AliceMustSubmitTransactions == [][
         /\ pc[Alice] = "AliceTakesAction"
         /\ pc'[Alice] = "AliceMoves"
-    =>
-        \/ UNCHANGED channel
-        \/ channel'.mode = ChannelMode.FINALIZED
+    => UNCHANGED channel
 ]_<<pc, channel>>
 
 \* It's useful to specify the following invariants or properties, since we can
@@ -488,5 +498,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 12:30:23 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 16:04:23 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
