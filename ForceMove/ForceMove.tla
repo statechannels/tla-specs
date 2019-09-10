@@ -18,8 +18,7 @@ ChannelMode == [
 TX_Type == [
   FORCE_MOVE |-> "FORCE_MOVE",
   REFUTE     |-> "REFUTE",
-  RESPOND    |-> "RESPOND",
-  TIMEOUT    |-> "TIMEOUT"
+  RESPOND    |-> "RESPOND"
 ]
 
 Range(f) == { f[x] : x \in DOMAIN f }
@@ -145,7 +144,6 @@ while AlicesGoalUnmet \/ submittedTX # NULL do AdjudicatorProcesses:
         if    submittedTX.type = TX_Type.FORCE_MOVE then forceMove(submittedTX.commitment);
         elsif submittedTX.type = TX_Type.REFUTE     then refute(submittedTX.turnNumber);
         elsif submittedTX.type = TX_Type.RESPOND    then respondWithMove(submittedTX.commitment);
-        elsif submittedTX.type = TX_Type.TIMEOUT    then timeout();
         else assert FALSE;
         end if;
         submittedTX := NULL;
@@ -168,28 +166,23 @@ She is allowed to:
 AliceMoves:
 while AlicesGoalUnmet do AliceTakesAction:
     await submittedTX = NULL;
-    if challengeOngoing
-    then
-        if
-            /\ channel.challenge.turnNumber < StartingTurnNumber
-            /\ submittedTX = NULL
-        then
+    if challengeOngoing then with turnNumber = channel.challenge.turnNumber do
+        if turnNumber < StartingTurnNumber then
             \* Alice has signed commitments from StartingTurnNumber up to LastTurnNumber.
             \* She can therefore call refute with exactly one commitment, according to
             \* the channel's current turnNumber.
-            with turnNumber = CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer
-            do submittedTX := [ type |-> TX_Type.REFUTE, turnNumber |-> turnNumber]; end with;
-        elsif
-            /\ channel.challenge.turnNumber >= StartingTurnNumber
-            /\ AlicesMove(channel.challenge.turnNumber+1)
-        then
-                with commitment = [ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ]
-                do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ]; end with;
-        else
-        \* Alice has run out of allowed actions.
-            submittedTX := [ type |-> TX_Type.TIMEOUT ];
+            with refutation = CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer
+            do submittedTX := [ type |-> TX_Type.REFUTE, turnNumber |-> refutation]; end with;
+        elsif turnNumber < LatestTurnNumber then
+            with response = turnNumber + 1,
+                 commitment = [ turnNumber |-> response, signer |-> ParticipantIDX(response) ]
+            do
+                assert response \in AlicesCommitments;
+                submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ];
+            end with;
+        else skip; \* Alice has run out of allowed actions.
         end if;
-    else 
+    end with; else 
         submittedTX := [
             commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
             type |-> TX_Type.FORCE_MOVE
@@ -342,15 +335,18 @@ AliceMoves == /\ pc[Alice] = "AliceMoves"
 AliceTakesAction == /\ pc[Alice] = "AliceTakesAction"
                     /\ submittedTX = NULL
                     /\ IF challengeOngoing
-                          THEN /\ IF /\ channel.challenge.turnNumber < StartingTurnNumber
-                                     /\ submittedTX = NULL
-                                     THEN /\ LET turnNumber == CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer IN
-                                               submittedTX' = [ type |-> TX_Type.REFUTE, turnNumber |-> turnNumber]
-                                     ELSE /\ IF /\ channel.challenge.turnNumber >= StartingTurnNumber
-                                                /\ AlicesMove(channel.challenge.turnNumber+1)
-                                                THEN /\ LET commitment == [ turnNumber |-> channel.challenge.turnNumber + 1, signer |-> AlicesIDX ] IN
-                                                          submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
-                                                ELSE /\ submittedTX' = [ type |-> TX_Type.TIMEOUT ]
+                          THEN /\ LET turnNumber == channel.challenge.turnNumber IN
+                                    IF turnNumber < StartingTurnNumber
+                                       THEN /\ LET refutation == CHOOSE n \in AlicesCommitments : ParticipantIDX(n) = channel.challenge.signer IN
+                                                 submittedTX' = [ type |-> TX_Type.REFUTE, turnNumber |-> refutation]
+                                       ELSE /\ IF turnNumber < LatestTurnNumber
+                                                  THEN /\ LET response == turnNumber + 1 IN
+                                                            LET commitment == [ turnNumber |-> response, signer |-> ParticipantIDX(response) ] IN
+                                                              /\ Assert(response \in AlicesCommitments, 
+                                                                        "Failure of assertion at line 182, column 17.")
+                                                              /\ submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
+                                                  ELSE /\ TRUE
+                                                       /\ UNCHANGED submittedTX
                           ELSE /\ submittedTX' =                [
                                                      commitment |-> [ turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX ],
                                                      type |-> TX_Type.FORCE_MOVE
@@ -380,7 +376,7 @@ EveTakesAction == /\ pc[Eve] = "EveTakesAction"
                                                 IF /\ challengeOngoing
                                                    /\ validTransition(commitment)
                                                    THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                  "Failure of assertion at line 73, column 1 of macro called at line 228, column 12.")
+                                                                  "Failure of assertion at line 73, column 1 of macro called at line 223, column 12.")
                                                         /\ channel' =            [
                                                                           mode |-> ChannelMode.OPEN,
                                                                           turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -498,5 +494,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 16:04:23 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 16:18:03 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
