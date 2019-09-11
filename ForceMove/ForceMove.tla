@@ -448,6 +448,10 @@ AliceMustSubmitTransactions == [][
     => UNCHANGED channel
 ]_<<pc, channel>>
 
+TurnNumberIncrements == [][
+    \A p \in ParticipantIDXs : channel'.turnNumber[p] >= channel.turnNumber[p]
+]_<<channel>>
+
 \* It's useful to specify the following invariants or properties, since we can
 \* inspect the trace of behaviours that violate them to verify that the model
 \* checker is working as intended.
