@@ -3,7 +3,6 @@ EXTENDS Integers, TLC, Utils
 CONSTANTS
     StartingTurnNumber,
     NumParticipants,
-    AlicesIDX,
     NULL
 (***************************************************************************)
 (* The purpose of this specification is to outline an algorithm that       *)
@@ -48,13 +47,10 @@ LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 AlicesCommitments == StartingTurnNumber..LatestTurnNumber
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
-AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = AlicesIDX
 
 ASSUME
   /\ StartingTurnNumber \in Nat
   /\ NumParticipants \in Nat \ { 1 }
-  /\ AlicesIDX \in ParticipantIDXs
-  /\ ~AlicesMove(LatestTurnNumber + 1)
             
 (* --algorithm forceMove
 (***************************************************************************)
@@ -69,6 +65,7 @@ ASSUME
 variables
     channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ],
     submittedTX = NULL,
+    AlicesIDX \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) },
     counter = 0 \* Auxilliary variable used in some properties and invariants.
     \* We can't specify any properties that require any memory of the
     \* behaviour up to the certain point (ie. the behaviour has passed through state X seven times in a row)
@@ -83,6 +80,7 @@ validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(commitment) ==
     /\ commitment.turnNumber = channel.challenge.turnNumber + 1
     /\ commitment.signer = ParticipantIDX(commitment.turnNumber)
+AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = AlicesIDX
 AlicesGoalMet ==
     /\ channel.mode = ChannelMode.CHALLENGE
     /\ channel.challenge.turnNumber = LatestTurnNumber
@@ -248,7 +246,7 @@ end algorithm;
 
 
 \* BEGIN TRANSLATION
-VARIABLES channel, submittedTX, counter, pc
+VARIABLES channel, submittedTX, AlicesIDX, counter, pc
 
 (* define statement *)
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
@@ -258,18 +256,20 @@ validCommitment(c) == c \in [ turnNumber: Nat, signer: ParticipantIDXs ]
 validTransition(commitment) ==
     /\ commitment.turnNumber = channel.challenge.turnNumber + 1
     /\ commitment.signer = ParticipantIDX(commitment.turnNumber)
+AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = AlicesIDX
 AlicesGoalMet ==
     /\ channel.mode = ChannelMode.CHALLENGE
     /\ channel.challenge.turnNumber = LatestTurnNumber
 
 
-vars == << channel, submittedTX, counter, pc >>
+vars == << channel, submittedTX, AlicesIDX, counter, pc >>
 
 ProcSet == {"Adjudicator"} \cup {"Alice"} \cup {"Eve"}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> [p \in ParticipantIDXs |-> 0], mode |-> ChannelMode.OPEN, challenge |-> NULL ]
         /\ submittedTX = NULL
+        /\ AlicesIDX \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) }
         /\ counter = 0
         /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "Adjudicator"
                                         [] self = "Alice" -> "A"
@@ -303,7 +303,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 93, column 1 of macro called at line 153, column 58.")
+                                                                                           "Failure of assertion at line 91, column 1 of macro called at line 151, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -312,7 +312,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 154, column 14.")
+                                                                                "Failure of assertion at line 152, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -320,7 +320,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                           /\ pc' = [pc EXCEPT !["Adjudicator"] = "Adjudicator"]
                      ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
                           /\ UNCHANGED << channel, submittedTX >>
-               /\ UNCHANGED counter
+               /\ UNCHANGED << AlicesIDX, counter >>
 
 adjudicator == Adjudicator
 
@@ -336,7 +336,7 @@ A == /\ pc["Alice"] = "A"
                                               THEN /\ LET response == turnNumber + 1 IN
                                                         LET commitment == [ turnNumber |-> response, signer |-> ParticipantIDX(response) ] IN
                                                           /\ Assert(response \in AlicesCommitments, 
-                                                                    "Failure of assertion at line 187, column 17.")
+                                                                    "Failure of assertion at line 185, column 17.")
                                                           /\ submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
@@ -347,7 +347,7 @@ A == /\ pc["Alice"] = "A"
                 /\ pc' = [pc EXCEPT !["Alice"] = "A"]
            ELSE /\ pc' = [pc EXCEPT !["Alice"] = "Done"]
                 /\ UNCHANGED submittedTX
-     /\ UNCHANGED << channel, counter >>
+     /\ UNCHANGED << channel, AlicesIDX, counter >>
 
 alice == A
 
@@ -366,7 +366,7 @@ E == /\ pc["Eve"] = "E"
                                               IF /\ challengeOngoing
                                                  /\ validTransition(commitment)
                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                "Failure of assertion at line 93, column 1 of macro called at line 231, column 12.")
+                                                                "Failure of assertion at line 91, column 1 of macro called at line 229, column 12.")
                                                       /\ channel' =            [
                                                                         mode |-> ChannelMode.OPEN,
                                                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -400,7 +400,7 @@ E == /\ pc["Eve"] = "E"
                 /\ pc' = [pc EXCEPT !["Eve"] = "E"]
            ELSE /\ pc' = [pc EXCEPT !["Eve"] = "Done"]
                 /\ UNCHANGED channel
-     /\ UNCHANGED << submittedTX, counter >>
+     /\ UNCHANGED << submittedTX, AlicesIDX, counter >>
 
 eve == E
 
@@ -476,5 +476,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 18:47:34 MDT 2019 by andrewstewart
+\* Last modified Wed Sep 11 11:08:48 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
