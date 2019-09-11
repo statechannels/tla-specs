@@ -167,8 +167,8 @@ begin
 (* She is allowed to:                                                      *)
 (*   - Call submitForceMove with any states that she currently has         *)
 (*   - Call refute with any state that she has                             *)
-(*   - Call respondWithMove or respondWithMove whenever there's an active  *)
-(*     challenge where it's her turn to move                               *)
+(*   - Call respondWithMove  whenever there's an active challenge where    *)
+(*     it's her turn to move                                               *)
 (***************************************************************************)
 A:
 while ~AlicesGoalMet do
@@ -203,15 +203,18 @@ begin
 (***************************************************************************)
 (* Eve can do almost anything.                                             *)
 (*                                                                         *)
-(*   - She can sign any data with any private key, except she cannot sign  *)
-(*     a commitment with Alice's private key when the turn number is       *)
-(*     greater than or equal to StartingTurnNumber                         *)
-(*   - She can call any adjudicator function, at any time                  *)
-(*   - She can front-run any transaction an arbitrary number of times: if  *)
-(*     anyone else calls an adjudicator function in a transaction tx, she  *)
-(*     can then choose to submit any transaction before tx is mined.       *)
-(*   - She can choose not to do anything, thus causing any active          *)
-(*     challenge to expire.                                                *)
+(*   a. She can sign any data with any private key, except she cannot sign *)
+(*      a commitment with Alice's private key when the turn number is      *)
+(*      greater than or equal to StartingTurnNumber                        *)
+(*   b. She can call any adjudicator function, at any time                 *)
+(*   c. She can front-run any transaction an arbitrary number of times: if *)
+(*      anyone else calls an adjudicator function in a transaction tx, she *)
+(*      can then choose to submit any transaction before tx is mined.      *)
+(*   d. She can choose not to do anything, thus causing any active         *)
+(*      challenge to expire.                                               *)
+(*                                                                         *)
+(* (d) is emulated by behaviours where execution is either                 *)
+(* Alice->Adjudicator or Adjudicator->Alice                                *)
 (***************************************************************************)
 E:
 while ~AlicesGoalMet do
@@ -236,7 +239,6 @@ while ~AlicesGoalMet do
         do refute(turnNumber); end with;
         end either;
         end if;
-    or skip; \* Eve goes offline
     end either;
 end while;
 end process;
@@ -301,7 +303,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 92, column 1 of macro called at line 152, column 58.")
+                                                                                           "Failure of assertion at line 93, column 1 of macro called at line 153, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -310,7 +312,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 153, column 14.")
+                                                                                "Failure of assertion at line 154, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -334,7 +336,7 @@ A == /\ pc["Alice"] = "A"
                                               THEN /\ LET response == turnNumber + 1 IN
                                                         LET commitment == [ turnNumber |-> response, signer |-> ParticipantIDX(response) ] IN
                                                           /\ Assert(response \in AlicesCommitments, 
-                                                                    "Failure of assertion at line 186, column 17.")
+                                                                    "Failure of assertion at line 187, column 17.")
                                                           /\ submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
@@ -364,7 +366,7 @@ E == /\ pc["Eve"] = "E"
                                               IF /\ challengeOngoing
                                                  /\ validTransition(commitment)
                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                "Failure of assertion at line 92, column 1 of macro called at line 227, column 12.")
+                                                                "Failure of assertion at line 93, column 1 of macro called at line 231, column 12.")
                                                       /\ channel' =            [
                                                                         mode |-> ChannelMode.OPEN,
                                                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
@@ -395,8 +397,6 @@ E == /\ pc["Eve"] = "E"
                                                     /\ UNCHANGED channel
                             ELSE /\ TRUE
                                  /\ UNCHANGED channel
-                   \/ /\ TRUE
-                      /\ UNCHANGED channel
                 /\ pc' = [pc EXCEPT !["Eve"] = "E"]
            ELSE /\ pc' = [pc EXCEPT !["Eve"] = "Done"]
                 /\ UNCHANGED channel
@@ -472,5 +472,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 10 18:40:14 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 10 18:47:34 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
