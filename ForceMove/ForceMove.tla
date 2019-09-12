@@ -77,19 +77,20 @@ define
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
-Commitment(n, s, h) == [ turnNumber |-> n, signer |-> s, history |-> h]
+
 MainHistoryTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-AlicesCommitments == { [ turnNumber |-> n, signer |-> ParticipantIDX(n), history |-> MainHistory ] : n \in MainHistoryTurnNumbers }
-AllowedCommitments == {
-    c \in [ turnNumber: Nat, signer: ParticipantIDXs, history: Histories ] :
-        /\ c.signer = ParticipantIDX(c.turnNumber)
-        /\ c.signer = AlicesIDX => c \in AlicesCommitments
-    }
+ValidCommitments == { c \in [ turnNumber: Nat, signer: ParticipantIDXs, history: Histories ] : c.signer = ParticipantIDX(c.turnNumber) }
+AlicesCommitments == { c \in ValidCommitments :
+    /\ c.history = MainHistory
+    /\ c.turnNumber \in MainHistoryTurnNumbers
+}
+StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNumber }
+EvesCommitments == { c \in ValidCommitments : c.signer = AlicesIDX => c \in AlicesCommitments }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 progressesChannel(commitment) == commitment.turnNumber >= channel.turnNumber[commitment.signer]
-validCommitment(c) == c \in AllowedCommitments
+validCommitment(c) == c \in ValidCommitments
 validTransition(commitment) ==
     /\ commitment.turnNumber = channel.challenge.turnNumber + 1
     /\ commitment.signer = ParticipantIDX(commitment.turnNumber)
@@ -202,20 +203,17 @@ while ~AlicesGoalMet do
             \* Alice has signed commitments from StartingTurnNumber up to LastTurnNumber.
             \* She can therefore call refute with exactly one commitment, according to
             \* the channel's current turnNumber.
-            with  commitment = CHOOSE c \in AlicesCommitments : c.signer = channel.challenge.signer do 
-            assert commitment \in AlicesCommitments;
+            with  commitment = CHOOSE c \in StoredCommitments : c.signer = channel.challenge.signer do 
             submittedTX := [ type |-> TX_Type.REFUTE, commitment |-> commitment]; end with;
         elsif turnNumber < LatestTurnNumber then
-            with commitment = CHOOSE c \in AlicesCommitments : c.turnNumber = channel.challenge.turnNumber + 1
-            do
-                assert commitment \in AlicesCommitments;
-                submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ];
+            with commitment = CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1
+            do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ];
             end with;
         else skip; \* Alice has run out of allowed actions.
         end if;
     end with; else 
         submittedTX := [
-            commitment |-> Commitment(LatestTurnNumber, AlicesIDX, MainHistory),
+            commitment |-> [turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX, history |-> MainHistory],
             type |-> TX_Type.FORCE_MOVE
         ];
     end if;
@@ -243,28 +241,18 @@ begin
 E:
 while ~AlicesGoalMet do
     either
-        with  signer \in ParticipantIDXs \ { AlicesIDX },
-              turnNumber \in { n \in NumParticipants..LatestTurnNumber : ParticipantIDX(n) = signer },
-              history \in Histories
-        do
-            forceMove(Commitment(turnNumber, signer, history));
+        with commitment = CHOOSE c \in EvesCommitments : TRUE
+        do forceMove(commitment);
         end with;
     or if challengeOngoing
-        then either with
-            turnNumber = channel.challenge.turnNumber + 1,
-            signer = ParticipantIDX(turnNumber),
-            history = channel.challenge.history
-        do respondWithMove(Commitment(turnNumber, signer, history)); end with;
-        or with turnNumber \in {}
-            \* Eve can refute with any state she has. Alice has seen all of these states.
-            \cup 0..LatestTurnNumber
-            \* Since Eve can sign arbitrary data with any private key other than Alice's,
-            \* she can also refute with arbitrarily states, as long as it's not Alice's
-            \* turn in that state.
-            \cup { n \in Nat : ~AlicesMove(n) },
-            signer = ParticipantIDX(turnNumber),
-            history = channel.challenge.history
-        do refute(Commitment(turnNumber, signer, history)); end with;
+        then either with commitment = CHOOSE c \in EvesCommitments :
+            /\ c.turnNumber = channel.challenge.turnNumber + 1
+            /\ c.history = channel.challenge.history
+        do respondWithMove(commitment); end with;
+        or with commitment = CHOOSE c \in EvesCommitments :
+            /\ c.signer = channel.challenge.signer
+            /\ c.turnNumber > channel.challenge.turnNumber
+        do refute(commitment); end with;
         end either;
         end if;
     end either;
@@ -282,19 +270,20 @@ VARIABLES channel, submittedTX, AlicesIDX, counter, pc
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
-Commitment(n, s, h) == [ turnNumber |-> n, signer |-> s, history |-> h]
+
 MainHistoryTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-AlicesCommitments == { [ turnNumber |-> n, signer |-> ParticipantIDX(n), history |-> MainHistory ] : n \in MainHistoryTurnNumbers }
-AllowedCommitments == {
-    c \in [ turnNumber: Nat, signer: ParticipantIDXs, history: Histories ] :
-        /\ c.signer = ParticipantIDX(c.turnNumber)
-        /\ c.signer = AlicesIDX => c \in AlicesCommitments
-    }
+ValidCommitments == { c \in [ turnNumber: Nat, signer: ParticipantIDXs, history: Histories ] : c.signer = ParticipantIDX(c.turnNumber) }
+AlicesCommitments == { c \in ValidCommitments :
+    /\ c.history = MainHistory
+    /\ c.turnNumber \in MainHistoryTurnNumbers
+}
+StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNumber }
+EvesCommitments == { c \in ValidCommitments : c.signer = AlicesIDX => c \in AlicesCommitments }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 progressesChannel(commitment) == commitment.turnNumber >= channel.turnNumber[commitment.signer]
-validCommitment(c) == c \in AllowedCommitments
+validCommitment(c) == c \in ValidCommitments
 validTransition(commitment) ==
     /\ commitment.turnNumber = channel.challenge.turnNumber + 1
     /\ commitment.signer = ParticipantIDX(commitment.turnNumber)
@@ -325,7 +314,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                            THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                       THEN /\ PrintT((<<"forceMove", (submittedTX.commitment)>>))
                                                            /\ Assert(FALSE, 
-                                                                     "Failure of assertion at line 107, column 5 of macro called at line 175, column 58.")
+                                                                     "Failure of assertion at line 108, column 5 of macro called at line 176, column 58.")
                                                       ELSE /\ TRUE
                                                 /\ IF /\ channelOpen
                                                       /\ progressesChannel((submittedTX.commitment))
@@ -336,7 +325,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                       THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                  THEN /\ PrintT((<<"refute", (submittedTX.commitment)>>))
                                                                       /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 107, column 5 of macro called at line 176, column 58.")
+                                                                                "Failure of assertion at line 108, column 5 of macro called at line 177, column 58.")
                                                                  ELSE /\ TRUE
                                                            /\ LET refutation == (submittedTX.commitment).turnNumber IN
                                                                 IF /\ challengeOngoing
@@ -357,12 +346,12 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                             THEN /\ PrintT((<<"respond", (submittedTX.commitment)>>))
                                                                                  /\ Assert(FALSE, 
-                                                                                           "Failure of assertion at line 107, column 5 of macro called at line 177, column 58.")
+                                                                                           "Failure of assertion at line 108, column 5 of macro called at line 178, column 58.")
                                                                             ELSE /\ TRUE
                                                                       /\ IF /\ challengeOngoing
                                                                             /\ validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 113, column 1 of macro called at line 177, column 58.")
+                                                                                           "Failure of assertion at line 114, column 1 of macro called at line 178, column 58.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))],
@@ -371,7 +360,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 178, column 14.")
+                                                                                "Failure of assertion at line 179, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -389,19 +378,15 @@ A == /\ pc["Alice"] = "A"
                 /\ IF challengeOngoing
                       THEN /\ LET turnNumber == channel.challenge.turnNumber IN
                                 IF turnNumber < StartingTurnNumber
-                                   THEN /\ LET commitment == CHOOSE c \in AlicesCommitments : c.signer = channel.challenge.signer IN
-                                             /\ Assert(commitment \in AlicesCommitments, 
-                                                       "Failure of assertion at line 206, column 13.")
-                                             /\ submittedTX' = [ type |-> TX_Type.REFUTE, commitment |-> commitment]
+                                   THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.signer = channel.challenge.signer IN
+                                             submittedTX' = [ type |-> TX_Type.REFUTE, commitment |-> commitment]
                                    ELSE /\ IF turnNumber < LatestTurnNumber
-                                              THEN /\ LET commitment == CHOOSE c \in AlicesCommitments : c.turnNumber = channel.challenge.turnNumber + 1 IN
-                                                        /\ Assert(commitment \in AlicesCommitments, 
-                                                                  "Failure of assertion at line 211, column 17.")
-                                                        /\ submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
+                                              THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1 IN
+                                                        submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
                       ELSE /\ submittedTX' =                [
-                                                 commitment |-> Commitment(LatestTurnNumber, AlicesIDX, MainHistory),
+                                                 commitment |-> [turnNumber |-> LatestTurnNumber, signer |-> AlicesIDX, history |-> MainHistory],
                                                  type |-> TX_Type.FORCE_MOVE
                                              ]
                 /\ pc' = [pc EXCEPT !["Alice"] = "A"]
@@ -413,68 +398,60 @@ alice == A
 
 E == /\ pc["Eve"] = "E"
      /\ IF ~AlicesGoalMet
-           THEN /\ \/ /\ \E signer \in ParticipantIDXs \ { AlicesIDX }:
-                           \E turnNumber \in { n \in NumParticipants..LatestTurnNumber : ParticipantIDX(n) = signer }:
-                             \E history \in Histories:
-                               /\ IF ~validCommitment((Commitment(turnNumber, signer, history)))
-                                     THEN /\ PrintT((<<"forceMove", (Commitment(turnNumber, signer, history))>>))
-                                          /\ Assert(FALSE, 
-                                                    "Failure of assertion at line 107, column 5 of macro called at line 250, column 13.")
-                                     ELSE /\ TRUE
-                               /\ IF /\ channelOpen
-                                     /\ progressesChannel((Commitment(turnNumber, signer, history)))
-                                     THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> (Commitment(turnNumber, signer, history)) ] @@ channel
-                                     ELSE /\ TRUE
-                                          /\ UNCHANGED channel
+           THEN /\ \/ /\ LET commitment == CHOOSE c \in EvesCommitments : TRUE IN
+                           /\ IF ~validCommitment(commitment)
+                                 THEN /\ PrintT((<<"forceMove", commitment>>))
+                                      /\ Assert(FALSE, 
+                                                "Failure of assertion at line 108, column 5 of macro called at line 245, column 12.")
+                                 ELSE /\ TRUE
+                           /\ IF /\ channelOpen
+                                 /\ progressesChannel(commitment)
+                                 THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment ] @@ channel
+                                 ELSE /\ TRUE
+                                      /\ UNCHANGED channel
                    \/ /\ IF challengeOngoing
-                            THEN /\ \/ /\ LET turnNumber == channel.challenge.turnNumber + 1 IN
-                                            LET signer == ParticipantIDX(turnNumber) IN
-                                              LET history == channel.challenge.history IN
-                                                /\ IF ~validCommitment((Commitment(turnNumber, signer, history)))
-                                                      THEN /\ PrintT((<<"respond", (Commitment(turnNumber, signer, history))>>))
-                                                           /\ Assert(FALSE, 
-                                                                     "Failure of assertion at line 107, column 5 of macro called at line 257, column 12.")
-                                                      ELSE /\ TRUE
-                                                /\ IF /\ challengeOngoing
-                                                      /\ validTransition((Commitment(turnNumber, signer, history)))
-                                                      THEN /\ Assert(((Commitment(turnNumber, signer, history)).turnNumber) \in Nat, 
-                                                                     "Failure of assertion at line 113, column 1 of macro called at line 257, column 12.")
-                                                           /\ channel' =            [
-                                                                             mode |-> ChannelMode.OPEN,
-                                                                             turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((Commitment(turnNumber, signer, history)).turnNumber))],
-                                                                             challenge |-> NULL
-                                                                         ]
-                                                      ELSE /\ TRUE
-                                                           /\ UNCHANGED channel
-                                    \/ /\ \E turnNumber \in                    {}
-                                                            
-                                                            \cup 0..LatestTurnNumber
-                                                            
-                                                            
-                                                            
-                                                            \cup { n \in Nat : ~AlicesMove(n) }:
-                                            LET signer == ParticipantIDX(turnNumber) IN
-                                              LET history == channel.challenge.history IN
-                                                /\ IF ~validCommitment((Commitment(turnNumber, signer, history)))
-                                                      THEN /\ PrintT((<<"refute", (Commitment(turnNumber, signer, history))>>))
-                                                           /\ Assert(FALSE, 
-                                                                     "Failure of assertion at line 107, column 5 of macro called at line 267, column 12.")
-                                                      ELSE /\ TRUE
-                                                /\ LET refutation == (Commitment(turnNumber, signer, history)).turnNumber IN
-                                                     IF /\ challengeOngoing
-                                                        /\ (Commitment(turnNumber, signer, history)).signer = channel.challenge.signer
-                                                        /\ refutation > channel.turnNumber[(Commitment(turnNumber, signer, history)).signer]
-                                                        /\ refutation > channel.challenge.turnNumber
-                                                        THEN /\ channel' =            [
-                                                                               mode |-> ChannelMode.OPEN,
-                                                                               challenge  |-> NULL,
-                                                                               turnNumber |-> [i \in {(Commitment(turnNumber, signer, history)).signer} |-> refutation] @@ channel.turnNumber
-                                                                           
-                                                                           
-                                                                           
-                                                                           ]
-                                                        ELSE /\ TRUE
-                                                             /\ UNCHANGED channel
+                            THEN /\ \/ /\ LET commitment ==                           CHOOSE c \in EvesCommitments :
+                                                            /\ c.turnNumber = channel.challenge.turnNumber + 1
+                                                            /\ c.history = channel.challenge.history IN
+                                            /\ IF ~validCommitment(commitment)
+                                                  THEN /\ PrintT((<<"respond", commitment>>))
+                                                       /\ Assert(FALSE, 
+                                                                 "Failure of assertion at line 108, column 5 of macro called at line 251, column 12.")
+                                                  ELSE /\ TRUE
+                                            /\ IF /\ challengeOngoing
+                                                  /\ validTransition(commitment)
+                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
+                                                                 "Failure of assertion at line 114, column 1 of macro called at line 251, column 12.")
+                                                       /\ channel' =            [
+                                                                         mode |-> ChannelMode.OPEN,
+                                                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))],
+                                                                         challenge |-> NULL
+                                                                     ]
+                                                  ELSE /\ TRUE
+                                                       /\ UNCHANGED channel
+                                    \/ /\ LET commitment ==                  CHOOSE c \in EvesCommitments :
+                                                            /\ c.signer = channel.challenge.signer
+                                                            /\ c.turnNumber > channel.challenge.turnNumber IN
+                                            /\ IF ~validCommitment(commitment)
+                                                  THEN /\ PrintT((<<"refute", commitment>>))
+                                                       /\ Assert(FALSE, 
+                                                                 "Failure of assertion at line 108, column 5 of macro called at line 255, column 12.")
+                                                  ELSE /\ TRUE
+                                            /\ LET refutation == commitment.turnNumber IN
+                                                 IF /\ challengeOngoing
+                                                    /\ commitment.signer = channel.challenge.signer
+                                                    /\ refutation > channel.turnNumber[commitment.signer]
+                                                    /\ refutation > channel.challenge.turnNumber
+                                                    THEN /\ channel' =            [
+                                                                           mode |-> ChannelMode.OPEN,
+                                                                           challenge  |-> NULL,
+                                                                           turnNumber |-> [i \in {commitment.signer} |-> refutation] @@ channel.turnNumber
+                                                                       
+                                                                       
+                                                                       
+                                                                       ]
+                                                    ELSE /\ TRUE
+                                                         /\ UNCHANGED channel
                             ELSE /\ TRUE
                                  /\ UNCHANGED channel
                 /\ pc' = [pc EXCEPT !["Eve"] = "E"]
@@ -501,8 +478,8 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 \* END TRANSLATION
 
 AllowedTransactions == { NULL }
-    \cup [ type: Range(TX_Type), commitment: AllowedCommitments ]
-AllowedChannels == [ turnNumber: [ParticipantIDXs -> Nat] , mode: Range(ChannelMode), challenge: AllowedCommitments \cup { NULL } ]
+    \cup [ type: Range(TX_Type), commitment: ValidCommitments ]
+AllowedChannels == [ turnNumber: [ParticipantIDXs -> Nat] , mode: Range(ChannelMode), challenge: ValidCommitments \cup { NULL } ]
 
 \* Safety & liveness properties
 
@@ -551,5 +528,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Sep 12 14:17:39 MDT 2019 by andrewstewart
+\* Last modified Thu Sep 12 14:38:32 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
