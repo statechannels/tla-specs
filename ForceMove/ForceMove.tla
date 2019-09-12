@@ -260,17 +260,16 @@ while ~AlicesGoalMet do
         do forceMove(commitment, challenger);
         end with;
     or if challengeOngoing
-        then either with commitment = CHOOSE c \in EvesCommitments :
-            /\ c.turnNumber = channel.challenge.turnNumber + 1
-            /\ c.history = channel.challenge.history
+        then either with commitment \in EvesCommitments
         do respondWithMove(commitment); end with;
-        or with commitment = CHOOSE c \in EvesCommitments :
-            /\ Signer(c) = channel.challenger
-            /\ c.turnNumber > channel.challenge.turnNumber
-        do refute(commitment); end with;
-        end either;
-        end if;
-    end either;
+    
+        or with commitment \in EvesCommitments
+        do respondWithAlternativeMove(commitment); end with;
+    
+        or with commitment \in EvesCommitments
+        do refute(commitment);
+        end with; end either;
+    end if; end either;
 end while;
 end process;
 
@@ -431,31 +430,43 @@ E == /\ pc["Eve"] = "E"
                                    ELSE /\ TRUE
                                         /\ UNCHANGED channel
                    \/ /\ IF challengeOngoing
-                            THEN /\ \/ /\ LET commitment ==                           CHOOSE c \in EvesCommitments :
-                                                            /\ c.turnNumber = channel.challenge.turnNumber + 1
-                                                            /\ c.history = channel.challenge.history IN
+                            THEN /\ \/ /\ \E commitment \in EvesCommitments:
                                             /\ IF ~validCommitment(commitment)
                                                   THEN /\ PrintT((<<"respond", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 109, column 5 of macro called at line 253, column 12.")
+                                                                 "Failure of assertion at line 112, column 5 of macro called at line 264, column 12.")
                                                   ELSE /\ TRUE
                                             /\ IF /\ challengeOngoing
                                                   /\ validTransition(commitment)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 115, column 1 of macro called at line 253, column 12.")
+                                                                 "Failure of assertion at line 118, column 1 of macro called at line 264, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))]
                                                                      ]
                                                   ELSE /\ TRUE
                                                        /\ UNCHANGED channel
-                                    \/ /\ LET commitment ==                  CHOOSE c \in EvesCommitments :
-                                                            /\ Signer(c) = channel.challenger
-                                                            /\ c.turnNumber > channel.challenge.turnNumber IN
+                                    \/ /\ \E commitment \in EvesCommitments:
+                                            /\ IF ~validCommitment(commitment)
+                                                  THEN /\ PrintT((<<"alternative", commitment>>))
+                                                       /\ Assert(FALSE, 
+                                                                 "Failure of assertion at line 112, column 5 of macro called at line 267, column 12.")
+                                                  ELSE /\ TRUE
+                                            /\ IF /\ challengeOngoing
+                                                  /\ validAlternative(commitment)
+                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
+                                                                 "Failure of assertion at line 118, column 1 of macro called at line 267, column 12.")
+                                                       /\ channel' =            [
+                                                                         mode |-> ChannelMode.OPEN,
+                                                                         turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))]
+                                                                     ]
+                                                  ELSE /\ TRUE
+                                                       /\ UNCHANGED channel
+                                    \/ /\ \E commitment \in EvesCommitments:
                                             /\ IF ~validCommitment(commitment)
                                                   THEN /\ PrintT((<<"refute", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 109, column 5 of macro called at line 257, column 12.")
+                                                                 "Failure of assertion at line 112, column 5 of macro called at line 270, column 12.")
                                                   ELSE /\ TRUE
                                             /\ LET refutation == commitment.turnNumber IN
                                                  IF /\ challengeOngoing
