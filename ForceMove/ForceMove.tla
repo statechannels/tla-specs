@@ -3,8 +3,7 @@ EXTENDS Integers, TLC, Utils
 CONSTANTS
     StartingTurnNumber,
     NumParticipants,
-    Histories,
-    MainHistory,
+    NumHistories,
     NULL
 (***************************************************************************)
 (* The purpose of this specification is to outline an algorithm that       *)
@@ -48,9 +47,9 @@ CONSTANTS
 
 ASSUME
   /\ StartingTurnNumber \in Nat
-  /\ NumParticipants \in Nat \ { 1 }
-  /\ Histories \in SUBSET Nat
-  /\ MainHistory \in Histories
+  /\ /\ NumParticipants \in Nat
+     /\ NumParticipants > 1
+  /\ NumHistories \in Nat
             
 (* --algorithm forceMove
 (***************************************************************************)
@@ -73,6 +72,8 @@ variables
     \* if we want to check some property the depends on the history of the behaviour
 
 define
+Histories == 1..NumHistories
+MainHistory == 1
 
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
@@ -268,6 +269,9 @@ end algorithm;
 VARIABLES channel, submittedTX, AlicesIDX, counter, pc
 
 (* define statement *)
+Histories == 1..NumHistories
+MainHistory == 1
+
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
@@ -539,5 +543,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Sep 12 15:20:08 MDT 2019 by andrewstewart
+\* Last modified Thu Sep 12 15:55:13 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
