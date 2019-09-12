@@ -5,7 +5,7 @@ ChannelMode == [
   CHALLENGE |-> "CHALLENGE"
 ]
 
-TX_Type == [
+ForceMoveAPI == [
   FORCE_MOVE |-> "FORCE_MOVE",
   REFUTE     |-> "REFUTE",
   RESPOND    |-> "RESPOND",

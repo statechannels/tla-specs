@@ -185,9 +185,9 @@ begin
 Adjudicator:
 while ~AlicesGoalMet \/ submittedTX # NULL do
     if submittedTX # NULL then
-        if    submittedTX.type = TX_Type.FORCE_MOVE then forceMove(submittedTX.commitment, submittedTX.challenger);
-        elsif submittedTX.type = TX_Type.REFUTE     then refute(submittedTX.commitment);
-        elsif submittedTX.type = TX_Type.RESPOND    then respondWithMove(submittedTX.commitment);
+        if    submittedTX.type = ForceMoveAPI.FORCE_MOVE then forceMove(submittedTX.commitment, submittedTX.challenger);
+        elsif submittedTX.type = ForceMoveAPI.REFUTE     then refute(submittedTX.commitment);
+        elsif submittedTX.type = ForceMoveAPI.RESPOND    then respondWithMove(submittedTX.commitment);
         else assert FALSE;
         end if;
         submittedTX := NULL;
@@ -216,10 +216,10 @@ while ~AlicesGoalMet do
             \* She can therefore call refute with exactly one commitment, according to
             \* the channel's current turnNumber.
             with  commitment = CHOOSE c \in StoredCommitments : Signer(c) = channel.challenger do 
-            submittedTX := [ type |-> TX_Type.REFUTE, commitment |-> commitment]; end with;
+            submittedTX := [ type |-> ForceMoveAPI.REFUTE, commitment |-> commitment]; end with;
         elsif turnNumber < LatestTurnNumber then
             with commitment = CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1
-            do submittedTX := [ type |-> TX_Type.RESPOND, commitment |-> commitment ];
+            do submittedTX := [ type |-> ForceMoveAPI.RESPOND, commitment |-> commitment ];
             end with;
         else skip; \* Alice has run out of allowed actions.
         end if;
@@ -227,7 +227,7 @@ while ~AlicesGoalMet do
         submittedTX := [
             commitment |-> [turnNumber |-> LatestTurnNumber, history |-> MainHistory],
             challenger |-> Alice,
-            type |-> TX_Type.FORCE_MOVE
+            type |-> ForceMoveAPI.FORCE_MOVE
         ];
     end if;
 end while;
@@ -330,7 +330,7 @@ Init == (* Global variables *)
 Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                /\ IF ~AlicesGoalMet \/ submittedTX # NULL
                      THEN /\ IF submittedTX # NULL
-                                THEN /\ IF submittedTX.type = TX_Type.FORCE_MOVE
+                                THEN /\ IF submittedTX.type = ForceMoveAPI.FORCE_MOVE
                                            THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                       THEN /\ PrintT((<<"forceMove", (submittedTX.commitment)>>))
                                                            /\ Assert(FALSE, 
@@ -341,7 +341,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                       THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> (submittedTX.commitment), challenger |-> (submittedTX.challenger) ] @@ channel
                                                       ELSE /\ TRUE
                                                            /\ UNCHANGED channel
-                                           ELSE /\ IF submittedTX.type = TX_Type.REFUTE
+                                           ELSE /\ IF submittedTX.type = ForceMoveAPI.REFUTE
                                                       THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                  THEN /\ PrintT((<<"refute", (submittedTX.commitment)>>))
                                                                       /\ Assert(FALSE, 
@@ -361,7 +361,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                                       ]
                                                                    ELSE /\ TRUE
                                                                         /\ UNCHANGED channel
-                                                      ELSE /\ IF submittedTX.type = TX_Type.RESPOND
+                                                      ELSE /\ IF submittedTX.type = ForceMoveAPI.RESPOND
                                                                  THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                             THEN /\ PrintT((<<"respond", (submittedTX.commitment)>>))
                                                                                  /\ Assert(FALSE, 
@@ -397,16 +397,16 @@ A == /\ pc["Alice"] = "A"
                       THEN /\ LET turnNumber == channel.challenge.turnNumber IN
                                 IF turnNumber < StartingTurnNumber
                                    THEN /\ LET commitment == CHOOSE c \in StoredCommitments : Signer(c) = channel.challenger IN
-                                             submittedTX' = [ type |-> TX_Type.REFUTE, commitment |-> commitment]
+                                             submittedTX' = [ type |-> ForceMoveAPI.REFUTE, commitment |-> commitment]
                                    ELSE /\ IF turnNumber < LatestTurnNumber
                                               THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1 IN
-                                                        submittedTX' = [ type |-> TX_Type.RESPOND, commitment |-> commitment ]
+                                                        submittedTX' = [ type |-> ForceMoveAPI.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
                       ELSE /\ submittedTX' =                [
                                                  commitment |-> [turnNumber |-> LatestTurnNumber, history |-> MainHistory],
                                                  challenger |-> Alice,
-                                                 type |-> TX_Type.FORCE_MOVE
+                                                 type |-> ForceMoveAPI.FORCE_MOVE
                                              ]
                 /\ pc' = [pc EXCEPT !["Alice"] = "A"]
            ELSE /\ pc' = [pc EXCEPT !["Alice"] = "Done"]
@@ -508,8 +508,8 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 \* END TRANSLATION
 
 AllowedTransactions == { NULL }
-    \cup [ type: { TX_Type.REFUTE, TX_Type.RESPOND, TX_Type.ALTERNATIVE }, commitment: ValidCommitments ]
-    \cup [ type: { TX_Type.FORCE_MOVE }, commitment: ValidCommitments, challenger: { Alice } ]
+    \cup [ type: { ForceMoveAPI.REFUTE, ForceMoveAPI.RESPOND, ForceMoveAPI.ALTERNATIVE }, commitment: ValidCommitments ]
+    \cup [ type: { ForceMoveAPI.FORCE_MOVE }, commitment: ValidCommitments, challenger: { Alice } ]
 OpenChannels == [mode: { ChannelMode.OPEN }, turnNumber: [ParticipantIDXs -> Nat]]
 ChallengeChannels == {
     c \in [
