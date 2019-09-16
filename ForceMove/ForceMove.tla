@@ -92,19 +92,21 @@ EvesCommitments == { c \in ValidCommitments : Signer(c) = Alice => c \in AlicesC
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-cancelsChallenge(commitment, challenger) ==
-    /\ challengeOngoing
-    /\ commitment.turnNumber > channel.challenge.turnNumber
+
     
 challengeAllowed(commitment, challenger) == commitment.turnNumber >= channel.turnNumber[challenger]
 
 validCommitment(c) == c \in ValidCommitments
+
 validTransition(c) ==
+    /\ challengeOngoing
     /\ c.turnNumber = channel.challenge.turnNumber + 1
     /\ c.history = channel.challenge.history
-validAlternative(c) == c \in ValidCommitments
-    /\ c.turnNumber = channel.challenge.turnNumber + 1
-    /\ c.history # channel.challenge.history
+
+cancelsChallenge(commitment) ==
+    /\ challengeOngoing
+    /\ commitment.turnNumber > channel.challenge.turnNumber
+
 AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = Alice
 AlicesGoalMet ==
     /\ channel.mode = ChannelMode.CHALLENGE
@@ -119,7 +121,7 @@ if ~validCommitment(c) then
 end if;
 end macro;
 
-macro clearChallenge(turnNumber)
+macro advanceChannel(turnNumber)
 begin
 assert turnNumber \in Nat;
 channel := [
@@ -128,23 +130,22 @@ channel := [
 ];
 end macro;
 
+
 macro respondWithMove(commitment)
 begin
 validateCommitment(commitment, "respond");
-if
-    /\ challengeOngoing
-    /\ validTransition(commitment)
-then clearChallenge(commitment.turnNumber);
+if validTransition(commitment)
+then advanceChannel(commitment.turnNumber);
 end if;
 end macro;
 
-macro respondWithAlternativeMove(commitment)
+macro checkpoint(commitment)
 begin
-validateCommitment(commitment, "alternative");
+validateCommitment(commitment, "checkpoint");
 if
-    /\ challengeOngoing
-    /\ validAlternative(commitment)
-then clearChallenge(commitment.turnNumber);
+    \/ channelOpen
+    \/ cancelsChallenge(commitment)
+then advanceChannel(commitment.turnNumber);
 end if;
 end macro;
 
@@ -269,8 +270,8 @@ while ~AlicesGoalMet do
         then either with commitment \in EvesCommitments
         do respondWithMove(commitment); end with;
     
-        or with commitment \in EvesCommitments
-        do respondWithAlternativeMove(commitment); end with;
+        or with commitment \in AlicesCommitments
+        do checkpoint(commitment); end with;
     
         or with commitment \in EvesCommitments
         do refute(commitment);
@@ -307,19 +308,21 @@ EvesCommitments == { c \in ValidCommitments : Signer(c) = Alice => c \in AlicesC
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-cancelsChallenge(commitment, challenger) ==
-    /\ challengeOngoing
-    /\ commitment.turnNumber > channel.challenge.turnNumber
+
 
 challengeAllowed(commitment, challenger) == commitment.turnNumber >= channel.turnNumber[challenger]
 
 validCommitment(c) == c \in ValidCommitments
+
 validTransition(c) ==
+    /\ challengeOngoing
     /\ c.turnNumber = channel.challenge.turnNumber + 1
     /\ c.history = channel.challenge.history
-validAlternative(c) == c \in ValidCommitments
-    /\ c.turnNumber = channel.challenge.turnNumber + 1
-    /\ c.history # channel.challenge.history
+
+cancelsChallenge(commitment) ==
+    /\ challengeOngoing
+    /\ commitment.turnNumber > channel.challenge.turnNumber
+
 AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = Alice
 AlicesGoalMet ==
     /\ channel.mode = ChannelMode.CHALLENGE
@@ -346,7 +349,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                            THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                       THEN /\ PrintT((<<"forceMove", (submittedTX.commitment)>>))
                                                            /\ Assert(FALSE, 
-                                                                     "Failure of assertion at line 118, column 5 of macro called at line 194, column 63.")
+                                                                     "Failure of assertion at line 120, column 5 of macro called at line 195, column 63.")
                                                       ELSE /\ TRUE
                                                 /\ IF /\ channelOpen
                                                       /\ challengeAllowed((submittedTX.commitment), (submittedTX.challenger))
@@ -357,7 +360,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                       THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                  THEN /\ PrintT((<<"refute", (submittedTX.commitment)>>))
                                                                       /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 118, column 5 of macro called at line 195, column 63.")
+                                                                                "Failure of assertion at line 120, column 5 of macro called at line 196, column 63.")
                                                                  ELSE /\ TRUE
                                                            /\ LET refutation == (submittedTX.commitment).turnNumber IN
                                                                 IF /\ challengeOngoing
@@ -377,12 +380,11 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  THEN /\ IF ~validCommitment((submittedTX.commitment))
                                                                             THEN /\ PrintT((<<"respond", (submittedTX.commitment)>>))
                                                                                  /\ Assert(FALSE, 
-                                                                                           "Failure of assertion at line 118, column 5 of macro called at line 196, column 63.")
+                                                                                           "Failure of assertion at line 120, column 5 of macro called at line 197, column 63.")
                                                                             ELSE /\ TRUE
-                                                                      /\ IF /\ challengeOngoing
-                                                                            /\ validTransition((submittedTX.commitment))
+                                                                      /\ IF validTransition((submittedTX.commitment))
                                                                             THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 124, column 1 of macro called at line 196, column 63.")
+                                                                                           "Failure of assertion at line 126, column 1 of macro called at line 197, column 63.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], ((submittedTX.commitment).turnNumber))]
@@ -390,7 +392,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
                                                                  ELSE /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 197, column 14.")
+                                                                                "Failure of assertion at line 198, column 14.")
                                                                       /\ UNCHANGED channel
                                      /\ submittedTX' = NULL
                                 ELSE /\ TRUE
@@ -434,7 +436,7 @@ E == /\ pc["Eve"] = "E"
                              /\ IF ~validCommitment(commitment)
                                    THEN /\ PrintT((<<"forceMove", commitment>>))
                                         /\ Assert(FALSE, 
-                                                  "Failure of assertion at line 118, column 5 of macro called at line 266, column 12.")
+                                                  "Failure of assertion at line 120, column 5 of macro called at line 267, column 12.")
                                    ELSE /\ TRUE
                              /\ IF /\ channelOpen
                                    /\ challengeAllowed(commitment, challenger)
@@ -446,28 +448,27 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validCommitment(commitment)
                                                   THEN /\ PrintT((<<"respond", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 118, column 5 of macro called at line 270, column 12.")
+                                                                 "Failure of assertion at line 120, column 5 of macro called at line 271, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF /\ challengeOngoing
-                                                  /\ validTransition(commitment)
+                                            /\ IF validTransition(commitment)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 124, column 1 of macro called at line 270, column 12.")
+                                                                 "Failure of assertion at line 126, column 1 of macro called at line 271, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))]
                                                                      ]
                                                   ELSE /\ TRUE
                                                        /\ UNCHANGED channel
-                                    \/ /\ \E commitment \in EvesCommitments:
+                                    \/ /\ \E commitment \in AlicesCommitments:
                                             /\ IF ~validCommitment(commitment)
-                                                  THEN /\ PrintT((<<"alternative", commitment>>))
+                                                  THEN /\ PrintT((<<"checkpoint", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 118, column 5 of macro called at line 273, column 12.")
+                                                                 "Failure of assertion at line 120, column 5 of macro called at line 274, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF /\ challengeOngoing
-                                                  /\ validAlternative(commitment)
+                                            /\ IF \/ channelOpen
+                                                  \/ cancelsChallenge(commitment)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 124, column 1 of macro called at line 273, column 12.")
+                                                                 "Failure of assertion at line 126, column 1 of macro called at line 274, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> [p \in ParticipantIDXs |-> Maximum(channel.turnNumber[p], (commitment.turnNumber))]
@@ -478,7 +479,7 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validCommitment(commitment)
                                                   THEN /\ PrintT((<<"refute", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 118, column 5 of macro called at line 276, column 12.")
+                                                                 "Failure of assertion at line 120, column 5 of macro called at line 277, column 12.")
                                                   ELSE /\ TRUE
                                             /\ LET refutation == commitment.turnNumber IN
                                                  IF /\ challengeOngoing
@@ -582,5 +583,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 16 15:11:14 MDT 2019 by andrewstewart
+\* Last modified Mon Sep 16 15:20:33 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
