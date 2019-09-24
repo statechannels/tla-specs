@@ -103,11 +103,11 @@ validCommitment(c) == c \in ValidCommitments
 
 validTransition(c) ==
     /\ challengeOngoing
-    /\ c.turnNumber = channel.challenge.turnNumber + 1
+    /\ c.turnNumber = channel.turnNumber + 1
 
 cancelsChallenge(commitment) ==
     /\ challengeOngoing
-    /\ commitment.turnNumber > channel.challenge.turnNumber
+    /\ commitment.turnNumber > channel.turnNumber
 
 AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = Alice
 AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
@@ -167,7 +167,7 @@ if
     \/ /\ challengeOngoing
        /\ commitment.turnNumber > channel.turnNumber
 then
-    channel := [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment, challenger |-> challenger ] @@ channel;
+    channel := [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> commitment.turnNumber, challenger |-> challenger ];
     \* By incrementing the number of forceMoves that have been called, we
     \* multiply the number of distinct states by a large amount, but we can specify properties like
     \* "Eve has not submitted 5 force moves"
@@ -208,7 +208,7 @@ begin
 A:
 while ~AlicesGoalMet do
     await submittedTX = NULL;
-    if challengeOngoing then with turnNumber = channel.challenge.turnNumber do
+    if challengeOngoing then with turnNumber = channel.turnNumber do
         if turnNumber < StartingTurnNumber then
             \* Alice has signed commitments from StartingTurnNumber up to LastTurnNumber.
             \* She can therefore call refute with exactly one commitment, according to
@@ -216,7 +216,7 @@ while ~AlicesGoalMet do
             with  commitment = CHOOSE c \in StoredCommitments : Signer(c) = channel.challenger do 
             submittedTX := [ type |-> ForceMoveAPI.REFUTE, commitment |-> commitment]; end with;
         elsif turnNumber < LatestTurnNumber then
-            with commitment = CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1
+            with commitment = CHOOSE c \in StoredCommitments : c.turnNumber = channel.turnNumber + 1
             do submittedTX := [ type |-> ForceMoveAPI.RESPOND, commitment |-> commitment ];
             end with;
         else skip; \* Alice has run out of allowed actions.
@@ -311,11 +311,11 @@ validCommitment(c) == c \in ValidCommitments
 
 validTransition(c) ==
     /\ challengeOngoing
-    /\ c.turnNumber = channel.challenge.turnNumber + 1
+    /\ c.turnNumber = channel.turnNumber + 1
 
 cancelsChallenge(commitment) ==
     /\ challengeOngoing
-    /\ commitment.turnNumber > channel.challenge.turnNumber
+    /\ commitment.turnNumber > channel.turnNumber
 
 AlicesMove(turnNumber) == ParticipantIDX(turnNumber) = Alice
 AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
@@ -347,7 +347,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                          /\ (submittedTX.commitment).turnNumber >= channel.turnNumber
                                                       \/ /\ challengeOngoing
                                                          /\ (submittedTX.commitment).turnNumber > channel.turnNumber
-                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> (submittedTX.commitment), challenger |-> (submittedTX.challenger) ] @@ channel
+                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (submittedTX.commitment).turnNumber, challenger |-> (submittedTX.challenger) ]
                                                       ELSE /\ TRUE
                                                            /\ UNCHANGED channel
                                            ELSE /\ IF submittedTX.type = ForceMoveAPI.REFUTE
@@ -399,12 +399,12 @@ A == /\ pc["Alice"] = "A"
      /\ IF ~AlicesGoalMet
            THEN /\ submittedTX = NULL
                 /\ IF challengeOngoing
-                      THEN /\ LET turnNumber == channel.challenge.turnNumber IN
+                      THEN /\ LET turnNumber == channel.turnNumber IN
                                 IF turnNumber < StartingTurnNumber
                                    THEN /\ LET commitment == CHOOSE c \in StoredCommitments : Signer(c) = channel.challenger IN
                                              submittedTX' = [ type |-> ForceMoveAPI.REFUTE, commitment |-> commitment]
                                    ELSE /\ IF turnNumber < LatestTurnNumber
-                                              THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.turnNumber = channel.challenge.turnNumber + 1 IN
+                                              THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.turnNumber = channel.turnNumber + 1 IN
                                                         submittedTX' = [ type |-> ForceMoveAPI.RESPOND, commitment |-> commitment ]
                                               ELSE /\ TRUE
                                                    /\ UNCHANGED submittedTX
@@ -433,7 +433,7 @@ E == /\ pc["Eve"] = "E"
                                       /\ commitment.turnNumber >= channel.turnNumber
                                    \/ /\ challengeOngoing
                                       /\ commitment.turnNumber > channel.turnNumber
-                                   THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment, challenger |-> challenger ] @@ channel
+                                   THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> commitment.turnNumber, challenger |-> challenger ]
                                    ELSE /\ TRUE
                                         /\ UNCHANGED channel
                    \/ /\ IF challengeOngoing
@@ -513,16 +513,12 @@ AllowedTransactions == { NULL }
     \cup [ type: { ForceMoveAPI.REFUTE, ForceMoveAPI.RESPOND, ForceMoveAPI.ALTERNATIVE }, commitment: ValidCommitments ]
     \cup [ type: { ForceMoveAPI.FORCE_MOVE }, commitment: ValidCommitments, challenger: { Alice } ]
 OpenChannels == [mode: { ChannelMode.OPEN }, turnNumber: Number]
-ChallengeChannels == {
-    c \in [
+ChallengeChannels ==  [
         mode: { ChannelMode.CHALLENGE },
         turnNumber: Number,
-        challenge: ValidCommitments,
         challenger: ParticipantIDXs
         
-    ] : c.challenge.turnNumber >= c.turnNumber
-   
-}
+    ]
 AllowedChannels == OpenChannels \cup ChallengeChannels
 
 \* Safety & liveness properties
@@ -569,5 +565,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 24 11:13:00 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 24 11:17:54 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
