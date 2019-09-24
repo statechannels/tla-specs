@@ -121,7 +121,7 @@ if ~validCommitment(c) then
 end if;
 end macro;
 
-macro advanceChannel(turnNumber)
+macro clearChallenge(turnNumber)
 begin
 assert turnNumber \in Nat;
 channel := [
@@ -135,7 +135,7 @@ macro respondWithMove(commitment)
 begin
 validateCommitment(commitment, "respond");
 if validTransition(commitment)
-then advanceChannel(commitment.turnNumber);
+then clearChallenge(commitment.turnNumber);
 end if;
 end macro;
 
@@ -143,7 +143,7 @@ macro checkpoint(commitment)
 begin
 validateCommitment(commitment, "checkpoint");
 if increasesTurnNumber(commitment.turnNumber)
-then advanceChannel(commitment.turnNumber);
+then clearChallenge(commitment.turnNumber);
 end if;
 end macro;
 
@@ -584,5 +584,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 24 11:08:28 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 24 11:10:03 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
