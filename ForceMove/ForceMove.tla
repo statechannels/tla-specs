@@ -193,7 +193,7 @@ while ~AlicesGoalMet \/ submittedTX # NULL do
 end while;
 end process;
 
-fair process alice = "Alice"
+fair+ process alice = "Alice"
 begin
 (***************************************************************************)
 (* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
@@ -502,7 +502,7 @@ Next == adjudicator \/ alice \/ eve
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
-        /\ WF_vars(alice)
+        /\ SF_vars(alice)
         /\ WF_vars(eve)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
@@ -565,5 +565,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 24 11:17:54 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 24 11:18:52 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
