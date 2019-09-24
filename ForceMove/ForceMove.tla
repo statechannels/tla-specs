@@ -142,7 +142,7 @@ end macro;
 macro checkpoint(commitment)
 begin
 validateCommitment(commitment, "checkpoint");
-if increasesTurnNumber(commitment.turnNumber)
+if increasesTurnNumber(commitment)
 then clearChallenge(commitment.turnNumber);
 end if;
 end macro;
@@ -153,7 +153,7 @@ validateCommitment(commitment, "refute");
 if
     /\ challengeOngoing
     /\ Signer(commitment) = channel.challenger
-    /\ increasesTurnNumber(commitment.turnNumber)
+    /\ increasesTurnNumber(commitment)
 then clearChallenge(channel.turnNumber);
 end if;
 end macro;
@@ -358,7 +358,7 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                                  ELSE /\ TRUE
                                                            /\ IF /\ challengeOngoing
                                                                  /\ Signer((submittedTX.commitment)) = channel.challenger
-                                                                 /\ increasesTurnNumber((submittedTX.commitment).turnNumber)
+                                                                 /\ increasesTurnNumber((submittedTX.commitment))
                                                                  THEN /\ Assert((channel.turnNumber) \in Nat, 
                                                                                 "Failure of assertion at line 126, column 1 of macro called at line 187, column 63.")
                                                                       /\ channel' =            [
@@ -458,7 +458,7 @@ E == /\ pc["Eve"] = "E"
                                                        /\ Assert(FALSE, 
                                                                  "Failure of assertion at line 120, column 5 of macro called at line 265, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF increasesTurnNumber(commitment.turnNumber)
+                                            /\ IF increasesTurnNumber(commitment)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 126, column 1 of macro called at line 265, column 12.")
                                                        /\ channel' =            [
@@ -475,7 +475,7 @@ E == /\ pc["Eve"] = "E"
                                                   ELSE /\ TRUE
                                             /\ IF /\ challengeOngoing
                                                   /\ Signer(commitment) = channel.challenger
-                                                  /\ increasesTurnNumber(commitment.turnNumber)
+                                                  /\ increasesTurnNumber(commitment)
                                                   THEN /\ Assert((channel.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 126, column 1 of macro called at line 268, column 12.")
                                                        /\ channel' =            [
@@ -569,5 +569,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 24 11:12:13 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 24 11:13:00 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
