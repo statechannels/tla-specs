@@ -97,7 +97,7 @@ EvesCommitments == EvesSupportedCommitments \cup EvesUnsupportedCommitments
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-challengeAllowed(commitment) == commitment.turnNumber >= channel.turnNumber
+increasesTurnNumber(commitment) == commitment.turnNumber > channel.turnNumber
 
 validCommitment(c) == c \in ValidCommitments
 
@@ -142,9 +142,7 @@ end macro;
 macro checkpoint(commitment)
 begin
 validateCommitment(commitment, "checkpoint");
-if
-    \/ channelOpen
-    \/ cancelsChallenge(commitment)
+if increasesTurnNumber(commitment.turnNumber)
 then advanceChannel(commitment.turnNumber);
 end if;
 end macro;
@@ -173,8 +171,10 @@ macro forceMove(commitment, challenger)
 begin
 validateCommitment(commitment, "forceMove");
 if
-    /\ channelOpen
-    /\ challengeAllowed(commitment)
+    \/ /\ channelOpen
+       /\ commitment.turnNumber >= channel.turnNumber
+    \/ /\ challengeOngoing
+       /\ commitment.turnNumber > channel.turnNumber
 then
     channel := [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment, challenger |-> challenger ] @@ channel;
     \* By incrementing the number of forceMoves that have been called, we
@@ -314,7 +314,7 @@ EvesCommitments == EvesSupportedCommitments \cup EvesUnsupportedCommitments
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-challengeAllowed(commitment) == commitment.turnNumber >= channel.turnNumber
+increasesTurnNumber(commitment) == commitment.turnNumber > channel.turnNumber
 
 validCommitment(c) == c \in ValidCommitments
 
@@ -352,8 +352,10 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                                                            /\ Assert(FALSE, 
                                                                      "Failure of assertion at line 120, column 5 of macro called at line 195, column 63.")
                                                       ELSE /\ TRUE
-                                                /\ IF /\ channelOpen
-                                                      /\ challengeAllowed((submittedTX.commitment))
+                                                /\ IF \/ /\ channelOpen
+                                                         /\ (submittedTX.commitment).turnNumber >= channel.turnNumber
+                                                      \/ /\ challengeOngoing
+                                                         /\ (submittedTX.commitment).turnNumber > channel.turnNumber
                                                       THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> (submittedTX.commitment), challenger |-> (submittedTX.challenger) ] @@ channel
                                                       ELSE /\ TRUE
                                                            /\ UNCHANGED channel
@@ -439,8 +441,10 @@ E == /\ pc["Eve"] = "E"
                                         /\ Assert(FALSE, 
                                                   "Failure of assertion at line 120, column 5 of macro called at line 267, column 12.")
                                    ELSE /\ TRUE
-                             /\ IF /\ channelOpen
-                                   /\ challengeAllowed(commitment)
+                             /\ IF \/ /\ channelOpen
+                                      /\ commitment.turnNumber >= channel.turnNumber
+                                   \/ /\ challengeOngoing
+                                      /\ commitment.turnNumber > channel.turnNumber
                                    THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, challenge |-> commitment, challenger |-> challenger ] @@ channel
                                    ELSE /\ TRUE
                                         /\ UNCHANGED channel
@@ -466,8 +470,7 @@ E == /\ pc["Eve"] = "E"
                                                        /\ Assert(FALSE, 
                                                                  "Failure of assertion at line 120, column 5 of macro called at line 274, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF \/ channelOpen
-                                                  \/ cancelsChallenge(commitment)
+                                            /\ IF increasesTurnNumber(commitment.turnNumber)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 126, column 1 of macro called at line 274, column 12.")
                                                        /\ channel' =            [
@@ -581,5 +584,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 24 10:57:17 MDT 2019 by andrewstewart
+\* Last modified Tue Sep 24 11:08:28 MDT 2019 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
