@@ -149,7 +149,7 @@ then
     \* By incrementing the number of forceMoves that have been called, we
     \* multiply the number of distinct states by a large amount, but we can specify properties like
     \* "Eve has not submitted 5 force moves"
-\*    counter := counter + 1;
+    \*    counter := counter + 1; 
 end if;
 end macro;
 
@@ -483,11 +483,12 @@ EveCannotFrontRun ==[][
         \/ channel' # channel
         \* By uncommenting the following line, one can inspect traces where Eve might
         \* have front-run Alice multiple times
-\*        \/ counter <= 3
+        \* You should also uncomment the line which increments the counter, above.
+        \/ counter <= 3
 ]_<<submittedTX, channel>>
 
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Jun 03 17:27:35 PDT 2020 by andrewstewart
+\* Last modified Wed Jun 03 18:05:02 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
