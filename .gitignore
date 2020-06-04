@@ -9,3 +9,7 @@
 *.log
 *.old
 *.tex
+
+# Running TLC generates a states folder
+states/*
+*/states/*
