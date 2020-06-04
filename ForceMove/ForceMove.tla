@@ -86,7 +86,7 @@ StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNum
 
 AlicesNextTurnNumber == CHOOSE n \in (LatestTurnNumber+1)..(LatestTurnNumber+NumParticipants) : ParticipantIDX(n) = Alice
 TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
-EvesCommitments == { c \in ValidCommitments : c.turnNumber <= AlicesNextTurnNumber }
+EvesCommitments == { c \in ValidCommitments : c.turnNumber < AlicesNextTurnNumber }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
@@ -242,7 +242,7 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-9436d653b040da178abb7016eb7c77eb
 VARIABLES channel, submittedTX, Alice, counter, pc
 
 (* define statement *)
@@ -261,7 +261,7 @@ StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNum
 
 AlicesNextTurnNumber == CHOOSE n \in (LatestTurnNumber+1)..(LatestTurnNumber+NumParticipants) : ParticipantIDX(n) = Alice
 TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
-EvesCommitments == { c \in ValidCommitments : c.turnNumber <= AlicesNextTurnNumber }
+EvesCommitments == { c \in ValidCommitments : c.turnNumber < AlicesNextTurnNumber }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
@@ -439,7 +439,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-785d778b06006d9b2822c31d139c79a1
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), commitment: ValidCommitments ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -489,5 +489,5 @@ EveCannotFrontRun ==[][
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Oct 30 10:01:58 NDT 2019 by andrewstewart
+\* Last modified Wed Jun 03 17:27:35 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
