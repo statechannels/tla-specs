@@ -448,7 +448,8 @@ AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
 
 TypeOK ==
   /\ channel \in AllowedChannels
-  /\ submittedTX \in AllowedTransactions
+  /\    \/ submittedTX \in AllowedTransactions
+        \/ submittedTX = NULL
 
 AliceCanProgressChannel == <>[](channel.turnNumber \in TargetTurnNumbers)
     
