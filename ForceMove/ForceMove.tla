@@ -172,11 +172,11 @@ while ~AlicesGoalMet \/ submittedTX # NULL do
 end while;
 end process;
 
-fair+ process alice = "Alice"
+fair process alice = "Alice"
 begin
 (***************************************************************************)
-(* Alice has states (n - numParticipants)..(n-1).  She wants to end   *)
-(* up with states (n - numParticipants + 1)..n.                       *)
+(* Alice has states (n - numParticipants)..(n-1).  She wants to end        *)
+(* up with states (n - numParticipants + 1)..n.                            *)
 (*                                                                         *)
 (* She is allowed to:                                                      *)
 (*   A. Call submitForceMove with any states that she currently has        *)
@@ -211,7 +211,7 @@ begin
 (* Eve can do almost anything.                                             *)
 (*                                                                         *)
 (*   a. She can sign any data with any private key, except she cannot sign *)
-(*      a state with Alice's private key when the turn number is      *)
+(*      a state with Alice's private key when the turn number is           *)
 (*      greater than or equal to StartingTurnNumber                        *)
 (*   b. She can call any adjudicator function, at any time                 *)
 (*   c. She can front-run any transaction an arbitrary number of times: if *)
@@ -244,7 +244,7 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-305e7f7762d941a7ba9920e780455ff1
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-806097698e01675fb978e768e2c1b810
 VARIABLES channel, submittedTX, Alice, alicesActionCount, pc
 
 (* define statement *)
@@ -444,12 +444,12 @@ Next == adjudicator \/ alice \/ eve
 
 Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(adjudicator)
-        /\ SF_vars(alice)
+        /\ WF_vars(alice)
         /\ WF_vars(eve)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-6d2f5616850c2630c4b42ce1a3d02e37
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-65f042d4b6afa4a8a284f3cbadea0380
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -492,5 +492,5 @@ EveCannotFrontRun == [][~(
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Jun 08 13:55:22 PDT 2020 by andrewstewart
+\* Last modified Mon Jun 08 14:01:47 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
