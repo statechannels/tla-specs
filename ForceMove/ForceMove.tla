@@ -479,7 +479,18 @@ TurnNumberIncrements == [][
 \* Alice should be able to accomplish her goal by submitting a single transaction.
 AliceCannotBeGriefed == alicesActionCount <= 1
 
+\* Eve front runs if she changes the channel after Alice submitted a transaction, but before 
+\* the transaction is processed
+\* Violations of this property are therefore _examples_ of Eve's ability to front-run
+\* Alice's transactions
+EveCannotFrontRun == [][~(
+    /\ submittedTX # NULL \* transaction has been submitted
+    /\ submittedTX' = submittedTX \* transaction is not processed
+    /\ channel' # channel \* channel is changed
+)]_<<submittedTX, channel>>
+
+
 =============================================================================
 \* Modification History
-\* Last modified Mon Jun 08 13:38:52 PDT 2020 by andrewstewart
+\* Last modified Mon Jun 08 13:55:22 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
