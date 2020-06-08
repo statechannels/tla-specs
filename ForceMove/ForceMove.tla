@@ -149,7 +149,7 @@ then
     \* By incrementing the number of forceMoves that have been called, we
     \* multiply the number of distinct states by a large amount, but we can specify properties like
     \* "Eve has not submitted 5 force moves"
-    \*    counter := counter + 1; 
+    \* counter := counter + 1; 
 end if;
 end macro;
 
@@ -230,7 +230,6 @@ while ~AlicesGoalMet do
     or if challengeOngoing
         then either with commitment \in EvesCommitments
         do respondWithMove(commitment); end with;
-    
         or with commitment \in EvesCommitments
         do checkpoint(commitment); end with;
         end either;
@@ -405,11 +404,11 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validCommitment(commitment)
                                                   THEN /\ PrintT((<<"checkpoint", commitment>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 109, column 5 of macro called at line 235, column 12.")
+                                                                 "Failure of assertion at line 109, column 5 of macro called at line 234, column 12.")
                                                   ELSE /\ TRUE
                                             /\ IF increasesTurnNumber(commitment)
                                                   THEN /\ Assert((commitment.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 115, column 1 of macro called at line 235, column 12.")
+                                                                 "Failure of assertion at line 115, column 1 of macro called at line 234, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> (commitment.turnNumber)
@@ -439,7 +438,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-785d778b06006d9b2822c31d139c79a1
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-cc3ac4b466495a3da9af16f38b842776
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), commitment: ValidCommitments ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -465,30 +464,32 @@ TurnNumberIncrements == [][
     channel'.turnNumber >= channel.turnNumber
 ]_<<channel>>
 
-\* It's useful to specify the following invariants or properties, since we can
-\* inspect the trace of behaviours that violate them to verify that the model
-\* checker is working as intended.
-
-EveCanGrieveAlice == counter < 5
 
 \* Behaviours that violate this property exhibit Eve's ability to front-run:
 \* Alice always submits a transaction that would change the channel state, if
 \* it took effect immediately. Therefore, if the channel state is not changed
 \* when a pending transaction is processed, Eve must have called a function
 \* already.
+\* NB: In the most recent version of the force-move protocol, this is not violated
+\* even when Eve front-runs, since force-move will overwrite existing challenges, if
+\* it increments the turn number.
 EveCannotFrontRun ==[][
         /\ submittedTX # NULL
-        /\ submittedTX' = NULL
+        /\ submittedTX' = NULL 
     =>
         \/ channel' # channel
         \* By uncommenting the following line, one can inspect traces where Eve might
         \* have front-run Alice multiple times
         \* You should also uncomment the line which increments the counter, above.
-        \/ counter <= 3
+\*        \/ counter <= 3
 ]_<<submittedTX, channel>>
 
+\* It's useful to specify the following invariants or properties, since we can
+\* inspect the trace of behaviours that violate them to verify that the model
+\* checker is working as intended.
+EveFrontRunsAtMostThrice == counter <= 3
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Jun 03 18:05:02 PDT 2020 by andrewstewart
+\* Last modified Mon Jun 08 08:42:22 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
