@@ -75,30 +75,30 @@ Number == Nat \cup { 0 }
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
-Signer(commitment) == ParticipantIDX(commitment.turnNumber)
+Signer(state) == ParticipantIDX(state.turnNumber)
 
 KnownTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-ValidCommitments == [ turnNumber: Nat ]
-AlicesCommitments == { c \in ValidCommitments :
+ValidStates == [ turnNumber: Nat ]
+AlicesStates == { c \in ValidStates :
     /\ c.turnNumber \in KnownTurnNumbers
 }
-StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNumber }
+StoredStates == { c \in AlicesStates : c.turnNumber >= StartingTurnNumber }
 
 AlicesNextTurnNumber == CHOOSE n \in (LatestTurnNumber+1)..(LatestTurnNumber+NumParticipants) : ParticipantIDX(n) = Alice
 TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
 
-\* The spec makes an assumption about what supported commitments Eve has:
+\* The spec makes an assumption about what supported states Eve has:
 \* Since Eve cannot forge Alice's signature, Eve cannot have a supported state with turn number
 \* greater than or equal to AlicesNextTurnNumber
-EvesSupportedCommitments == { c \in ValidCommitments : c.turnNumber < AlicesNextTurnNumber}
-EvesCommitments == EvesSupportedCommitments \union { c \in ValidCommitments : ParticipantIDX(c.turnNumber) # Alice }
+EvesSupportedStates == { c \in ValidStates : c.turnNumber < AlicesNextTurnNumber}
+EvesStates == EvesSupportedStates \union { c \in ValidStates : ParticipantIDX(c.turnNumber) # Alice }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-increasesTurnNumber(commitment) == commitment.turnNumber > channel.turnNumber
+increasesTurnNumber(state) == state.turnNumber > channel.turnNumber
 
-validCommitment(c) == c \in ValidCommitments
+validState(c) == c \in ValidStates
 
 validTransition(c) ==
     /\ challengeOngoing
@@ -107,9 +107,9 @@ validTransition(c) ==
 AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
 end define;
 
-macro validateCommitment(c, type)
+macro validateState(c, type)
 begin
-if ~validCommitment(c) then
+if ~validState(c) then
     print(<<type, c>>);
     assert FALSE;
 end if;
@@ -125,32 +125,32 @@ channel := [
 end macro;
 
 
-macro respondWithMove(commitment)
+macro respondWithMove(state)
 begin
-validateCommitment(commitment, "respond");
-if validTransition(commitment)
-then clearChallenge(commitment.turnNumber);
+validateState(state, "respond");
+if validTransition(state)
+then clearChallenge(state.turnNumber);
 end if;
 end macro;
 
-macro checkpoint(commitment)
+macro checkpoint(state)
 begin
-validateCommitment(commitment, "checkpoint");
-if increasesTurnNumber(commitment)
-then clearChallenge(commitment.turnNumber);
+validateState(state, "checkpoint");
+if increasesTurnNumber(state)
+then clearChallenge(state.turnNumber);
 end if;
 end macro;
 
-macro forceMove(commitment)
+macro forceMove(state)
 begin
-validateCommitment(commitment, "forceMove");
+validateState(state, "forceMove");
 if
     \/ /\ channelOpen
-       /\ commitment.turnNumber >= channel.turnNumber
+       /\ state.turnNumber >= channel.turnNumber
     \/ /\ challengeOngoing
-       /\ commitment.turnNumber > channel.turnNumber
+       /\ state.turnNumber > channel.turnNumber
 then
-    channel := [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> commitment.turnNumber ];
+    channel := [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ];
 end if;
 end macro;
 
@@ -162,9 +162,9 @@ begin
 Adjudicator:
 while ~AlicesGoalMet \/ submittedTX # NULL do
     if submittedTX # NULL then
-        if    submittedTX.type = ForceMoveAPI.FORCE_MOVE then forceMove(submittedTX.commitment);
-        elsif submittedTX.type = ForceMoveAPI.RESPOND    then respondWithMove(submittedTX.commitment);
-        elsif submittedTX.type = ForceMoveAPI.CHECKPOINT then checkpoint(submittedTX.commitment);
+        if    submittedTX.type = ForceMoveAPI.FORCE_MOVE then forceMove(submittedTX.state);
+        elsif submittedTX.type = ForceMoveAPI.RESPOND    then respondWithMove(submittedTX.state);
+        elsif submittedTX.type = ForceMoveAPI.CHECKPOINT then checkpoint(submittedTX.state);
         else assert FALSE;
         end if;
         submittedTX := NULL;
@@ -175,8 +175,8 @@ end process;
 fair+ process alice = "Alice"
 begin
 (***************************************************************************)
-(* Alice has commitments (n - numParticipants)..(n-1).  She wants to end   *)
-(* up with commitments (n - numParticipants + 1)..n.                       *)
+(* Alice has states (n - numParticipants)..(n-1).  She wants to end   *)
+(* up with states (n - numParticipants + 1)..n.                       *)
 (*                                                                         *)
 (* She is allowed to:                                                      *)
 (*   A. Call submitForceMove with any states that she currently has        *)
@@ -189,15 +189,15 @@ while ~AlicesGoalMet do
     await submittedTX = NULL;
     if challengeOngoing then with turnNumber = channel.turnNumber do
         if turnNumber < LatestTurnNumber then
-            \* Alice has signed commitments from StartingTurnNumber up to LastTurnNumber.
-            \* She would therefore call forceMove with the latest commitment
-            with  commitment = CHOOSE c \in StoredCommitments : c.turnNumber = LatestTurnNumber do 
-            submittedTX := [ type |-> ForceMoveAPI.FORCE_MOVE, commitment |-> commitment]; end with;
+            \* Alice has signed states from StartingTurnNumber up to LastTurnNumber.
+            \* She would therefore call forceMove with the latest state
+            with  state = CHOOSE c \in StoredStates : c.turnNumber = LatestTurnNumber do 
+            submittedTX := [ type |-> ForceMoveAPI.FORCE_MOVE, state |-> state]; end with;
             alicesActionCount := alicesActionCount + 1;
         end if;
     end with; else 
         submittedTX := [
-            commitment |-> [turnNumber |-> LatestTurnNumber ],
+            state |-> [turnNumber |-> LatestTurnNumber ],
             type |-> ForceMoveAPI.FORCE_MOVE
         ];
         alicesActionCount := alicesActionCount + 1;
@@ -211,7 +211,7 @@ begin
 (* Eve can do almost anything.                                             *)
 (*                                                                         *)
 (*   a. She can sign any data with any private key, except she cannot sign *)
-(*      a commitment with Alice's private key when the turn number is      *)
+(*      a state with Alice's private key when the turn number is      *)
 (*      greater than or equal to StartingTurnNumber                        *)
 (*   b. She can call any adjudicator function, at any time                 *)
 (*   c. She can front-run any transaction an arbitrary number of times: if *)
@@ -226,15 +226,15 @@ begin
 E:
 while ~AlicesGoalMet do
     either
-        \* TODO: challenge with more commitments than this
-        with commitment \in EvesSupportedCommitments
-        do forceMove(commitment);
+        \* TODO: challenge with more states than this
+        with state \in EvesSupportedStates
+        do forceMove(state);
         end with;
     or if challengeOngoing
-        then either with commitment \in EvesSupportedCommitments
-        do respondWithMove(commitment); end with;
-        or with commitment \in EvesSupportedCommitments
-        do checkpoint(commitment); end with;
+        then either with state \in EvesSupportedStates
+        do respondWithMove(state); end with;
+        or with state \in EvesSupportedStates
+        do checkpoint(state); end with;
         end either;
     end if; end either;
 end while;
@@ -244,7 +244,7 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-e9eef9089541312909bf46e5d5f4770c
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-305e7f7762d941a7ba9920e780455ff1
 VARIABLES channel, submittedTX, Alice, alicesActionCount, pc
 
 (* define statement *)
@@ -252,14 +252,14 @@ Number == Nat \cup { 0 }
 LatestTurnNumber == StartingTurnNumber + NumParticipants - 1
 ParticipantIDXs == 1..NumParticipants
 ParticipantIDX(turnNumber) == 1 + ((turnNumber - 1) % NumParticipants)
-Signer(commitment) == ParticipantIDX(commitment.turnNumber)
+Signer(state) == ParticipantIDX(state.turnNumber)
 
 KnownTurnNumbers == 0..(StartingTurnNumber + NumParticipants)
-ValidCommitments == [ turnNumber: Nat ]
-AlicesCommitments == { c \in ValidCommitments :
+ValidStates == [ turnNumber: Nat ]
+AlicesStates == { c \in ValidStates :
     /\ c.turnNumber \in KnownTurnNumbers
 }
-StoredCommitments == { c \in AlicesCommitments : c.turnNumber >= StartingTurnNumber }
+StoredStates == { c \in AlicesStates : c.turnNumber >= StartingTurnNumber }
 
 AlicesNextTurnNumber == CHOOSE n \in (LatestTurnNumber+1)..(LatestTurnNumber+NumParticipants) : ParticipantIDX(n) = Alice
 TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
@@ -267,15 +267,15 @@ TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
 
 
 
-EvesSupportedCommitments == { c \in ValidCommitments : c.turnNumber < AlicesNextTurnNumber}
-EvesCommitments == EvesSupportedCommitments \union { c \in ValidCommitments : ParticipantIDX(c.turnNumber) # Alice }
+EvesSupportedStates == { c \in ValidStates : c.turnNumber < AlicesNextTurnNumber}
+EvesStates == EvesSupportedStates \union { c \in ValidStates : ParticipantIDX(c.turnNumber) # Alice }
 
 challengeOngoing == channel.mode = ChannelMode.CHALLENGE
 channelOpen == channel.mode = ChannelMode.OPEN
 
-increasesTurnNumber(commitment) == commitment.turnNumber > channel.turnNumber
+increasesTurnNumber(state) == state.turnNumber > channel.turnNumber
 
-validCommitment(c) == c \in ValidCommitments
+validState(c) == c \in ValidStates
 
 validTransition(c) ==
     /\ challengeOngoing
@@ -301,45 +301,45 @@ Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
                /\ IF ~AlicesGoalMet \/ submittedTX # NULL
                      THEN /\ IF submittedTX # NULL
                                 THEN /\ IF submittedTX.type = ForceMoveAPI.FORCE_MOVE
-                                           THEN /\ IF ~validCommitment((submittedTX.commitment))
-                                                      THEN /\ PrintT((<<"forceMove", (submittedTX.commitment)>>))
+                                           THEN /\ IF ~validState((submittedTX.state))
+                                                      THEN /\ PrintT((<<"forceMove", (submittedTX.state)>>))
                                                            /\ Assert(FALSE, 
                                                                      "Failure of assertion at line 114, column 5 of macro called at line 165, column 63.")
                                                       ELSE /\ TRUE
                                                 /\ IF \/ /\ channelOpen
-                                                         /\ (submittedTX.commitment).turnNumber >= channel.turnNumber
+                                                         /\ (submittedTX.state).turnNumber >= channel.turnNumber
                                                       \/ /\ challengeOngoing
-                                                         /\ (submittedTX.commitment).turnNumber > channel.turnNumber
-                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (submittedTX.commitment).turnNumber ]
+                                                         /\ (submittedTX.state).turnNumber > channel.turnNumber
+                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (submittedTX.state).turnNumber ]
                                                       ELSE /\ TRUE
                                                            /\ UNCHANGED channel
                                            ELSE /\ IF submittedTX.type = ForceMoveAPI.RESPOND
-                                                      THEN /\ IF ~validCommitment((submittedTX.commitment))
-                                                                 THEN /\ PrintT((<<"respond", (submittedTX.commitment)>>))
+                                                      THEN /\ IF ~validState((submittedTX.state))
+                                                                 THEN /\ PrintT((<<"respond", (submittedTX.state)>>))
                                                                       /\ Assert(FALSE, 
                                                                                 "Failure of assertion at line 114, column 5 of macro called at line 166, column 63.")
                                                                  ELSE /\ TRUE
-                                                           /\ IF validTransition((submittedTX.commitment))
-                                                                 THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
+                                                           /\ IF validTransition((submittedTX.state))
+                                                                 THEN /\ Assert(((submittedTX.state).turnNumber) \in Nat, 
                                                                                 "Failure of assertion at line 120, column 1 of macro called at line 166, column 63.")
                                                                       /\ channel' =            [
                                                                                         mode |-> ChannelMode.OPEN,
-                                                                                        turnNumber |-> ((submittedTX.commitment).turnNumber)
+                                                                                        turnNumber |-> ((submittedTX.state).turnNumber)
                                                                                     ]
                                                                  ELSE /\ TRUE
                                                                       /\ UNCHANGED channel
                                                       ELSE /\ IF submittedTX.type = ForceMoveAPI.CHECKPOINT
-                                                                 THEN /\ IF ~validCommitment((submittedTX.commitment))
-                                                                            THEN /\ PrintT((<<"checkpoint", (submittedTX.commitment)>>))
+                                                                 THEN /\ IF ~validState((submittedTX.state))
+                                                                            THEN /\ PrintT((<<"checkpoint", (submittedTX.state)>>))
                                                                                  /\ Assert(FALSE, 
                                                                                            "Failure of assertion at line 114, column 5 of macro called at line 167, column 63.")
                                                                             ELSE /\ TRUE
-                                                                      /\ IF increasesTurnNumber((submittedTX.commitment))
-                                                                            THEN /\ Assert(((submittedTX.commitment).turnNumber) \in Nat, 
+                                                                      /\ IF increasesTurnNumber((submittedTX.state))
+                                                                            THEN /\ Assert(((submittedTX.state).turnNumber) \in Nat, 
                                                                                            "Failure of assertion at line 120, column 1 of macro called at line 167, column 63.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
-                                                                                                   turnNumber |-> ((submittedTX.commitment).turnNumber)
+                                                                                                   turnNumber |-> ((submittedTX.state).turnNumber)
                                                                                                ]
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
@@ -362,14 +362,14 @@ A == /\ pc["Alice"] = "A"
                 /\ IF challengeOngoing
                       THEN /\ LET turnNumber == channel.turnNumber IN
                                 IF turnNumber < LatestTurnNumber
-                                   THEN /\ LET commitment == CHOOSE c \in StoredCommitments : c.turnNumber = LatestTurnNumber IN
-                                             submittedTX' = [ type |-> ForceMoveAPI.FORCE_MOVE, commitment |-> commitment]
+                                   THEN /\ LET state == CHOOSE c \in StoredStates : c.turnNumber = LatestTurnNumber IN
+                                             submittedTX' = [ type |-> ForceMoveAPI.FORCE_MOVE, state |-> state]
                                         /\ alicesActionCount' = alicesActionCount + 1
                                    ELSE /\ TRUE
                                         /\ UNCHANGED << submittedTX, 
                                                         alicesActionCount >>
                       ELSE /\ submittedTX' =                [
-                                                 commitment |-> [turnNumber |-> LatestTurnNumber ],
+                                                 state |-> [turnNumber |-> LatestTurnNumber ],
                                                  type |-> ForceMoveAPI.FORCE_MOVE
                                              ]
                            /\ alicesActionCount' = alicesActionCount + 1
@@ -382,47 +382,47 @@ alice == A
 
 E == /\ pc["Eve"] = "E"
      /\ IF ~AlicesGoalMet
-           THEN /\ \/ /\ \E commitment \in EvesSupportedCommitments:
-                           /\ IF ~validCommitment(commitment)
-                                 THEN /\ PrintT((<<"forceMove", commitment>>))
+           THEN /\ \/ /\ \E state \in EvesSupportedStates:
+                           /\ IF ~validState(state)
+                                 THEN /\ PrintT((<<"forceMove", state>>))
                                       /\ Assert(FALSE, 
                                                 "Failure of assertion at line 114, column 5 of macro called at line 231, column 12.")
                                  ELSE /\ TRUE
                            /\ IF \/ /\ channelOpen
-                                    /\ commitment.turnNumber >= channel.turnNumber
+                                    /\ state.turnNumber >= channel.turnNumber
                                  \/ /\ challengeOngoing
-                                    /\ commitment.turnNumber > channel.turnNumber
-                                 THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> commitment.turnNumber ]
+                                    /\ state.turnNumber > channel.turnNumber
+                                 THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ]
                                  ELSE /\ TRUE
                                       /\ UNCHANGED channel
                    \/ /\ IF challengeOngoing
-                            THEN /\ \/ /\ \E commitment \in EvesSupportedCommitments:
-                                            /\ IF ~validCommitment(commitment)
-                                                  THEN /\ PrintT((<<"respond", commitment>>))
+                            THEN /\ \/ /\ \E state \in EvesSupportedStates:
+                                            /\ IF ~validState(state)
+                                                  THEN /\ PrintT((<<"respond", state>>))
                                                        /\ Assert(FALSE, 
                                                                  "Failure of assertion at line 114, column 5 of macro called at line 235, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF validTransition(commitment)
-                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
+                                            /\ IF validTransition(state)
+                                                  THEN /\ Assert((state.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 120, column 1 of macro called at line 235, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
-                                                                         turnNumber |-> (commitment.turnNumber)
+                                                                         turnNumber |-> (state.turnNumber)
                                                                      ]
                                                   ELSE /\ TRUE
                                                        /\ UNCHANGED channel
-                                    \/ /\ \E commitment \in EvesSupportedCommitments:
-                                            /\ IF ~validCommitment(commitment)
-                                                  THEN /\ PrintT((<<"checkpoint", commitment>>))
+                                    \/ /\ \E state \in EvesSupportedStates:
+                                            /\ IF ~validState(state)
+                                                  THEN /\ PrintT((<<"checkpoint", state>>))
                                                        /\ Assert(FALSE, 
                                                                  "Failure of assertion at line 114, column 5 of macro called at line 237, column 12.")
                                                   ELSE /\ TRUE
-                                            /\ IF increasesTurnNumber(commitment)
-                                                  THEN /\ Assert((commitment.turnNumber) \in Nat, 
+                                            /\ IF increasesTurnNumber(state)
+                                                  THEN /\ Assert((state.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 120, column 1 of macro called at line 237, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
-                                                                         turnNumber |-> (commitment.turnNumber)
+                                                                         turnNumber |-> (state.turnNumber)
                                                                      ]
                                                   ELSE /\ TRUE
                                                        /\ UNCHANGED channel
@@ -449,9 +449,9 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-df2717bc801d3517735d9ef3a9202745
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-6d2f5616850c2630c4b42ce1a3d02e37
 
-AllowedTransactions == [ type: Range(ForceMoveAPI), commitment: ValidCommitments ]
+AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
 
 \* Safety & liveness properties
@@ -481,5 +481,5 @@ AliceCannotBeGriefed == alicesActionCount <= 1
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Jun 08 13:37:18 PDT 2020 by andrewstewart
+\* Last modified Mon Jun 08 13:38:52 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
