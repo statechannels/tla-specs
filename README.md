@@ -13,8 +13,8 @@ This repository contains TLA+ specifications of various protocols used by wallet
 2. Read [this article](https://medium.com/@bellmar/introduction-to-tla-model-checking-in-the-command-line-c6871700a6a2).
 3. If you didn't read the article, follow [these instructions](https://github.com/pmer/tla-bin#installation).
    - The TLA+ Toolkit isn't _that_ bad. It makes your specs look nice!
-4. Try out a model: `tlc StrictActionLimit -config Success.cfg`.
-5. Try out a model that "fails": `tlc StrictActionLimit -config EveCannotFrontRun.cfg`
+4. Try out a model: `tlc Version1 -config Success.cfg`.
+5. Try out a model that "fails": `tlc Version1 -config EveCannotFrontRun.cfg`
   - This actually produces an error trace that exhibits Eve's ability to "front-run", according to the spec's design.
 
 ## Interpretation of `EveCannotFrontRun`
@@ -74,6 +74,7 @@ State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 /\ alicesActionCount = 1
 ```
 
+This gives us confidence that our spec is accurately emulating Eve's ability to front-run transactions.
 
 If we wish, we can observe more interesting traces, where we force some specific on-chain state while Alice's transaction is pending:
 
