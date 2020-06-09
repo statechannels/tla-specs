@@ -1,4 +1,4 @@
----- MODULE TwoParticipants ----
+---- MODULE RelaxedActionLimit ----
 EXTENDS ForceMove, TLC
 
 const_StartingTurnNumber == 5
