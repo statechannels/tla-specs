@@ -201,10 +201,11 @@ while ~AlicesGoalMet do
     await submittedTX = NULL;
     if challengeOngoing then with turnNumber = channel.turnNumber do
         if turnNumber < LatestTurnNumber then
-            \* Alice has signed states from StartingTurnNumber up to LastTurnNumber.
-            \* She would therefore call forceMove with the latest state
-            with  state = CHOOSE c \in StoredStates : c.turnNumber = LatestTurnNumber do 
-            submittedTX := [ type |-> ForceMoveAPI.FORCE_MOVE, state |-> state]; end with;
+            with  state = CHOOSE s \in StoredStates :
+                /\ s.turnNumber > channel.turnNumber
+                /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber)
+             do 
+            submittedTX := [ type |-> ForceMoveAPI.REFUTE, state |-> state]; end with;
             alicesActionCount := alicesActionCount + 1;
         end if;
     end with; else 
@@ -256,7 +257,7 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-94bc7a77a91a7ccff2f6f5b7570b5840
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-18e69576cf9ec758d7378aea3407788b
 VARIABLES channel, submittedTX, Alice, alicesActionCount, pc
 
 (* define statement *)
@@ -391,8 +392,10 @@ A == /\ pc["Alice"] = "A"
                 /\ IF challengeOngoing
                       THEN /\ LET turnNumber == channel.turnNumber IN
                                 IF turnNumber < LatestTurnNumber
-                                   THEN /\ LET state == CHOOSE c \in StoredStates : c.turnNumber = LatestTurnNumber IN
-                                             submittedTX' = [ type |-> ForceMoveAPI.FORCE_MOVE, state |-> state]
+                                   THEN /\ LET state ==           CHOOSE s \in StoredStates :
+                                                        /\ s.turnNumber > channel.turnNumber
+                                                        /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber) IN
+                                             submittedTX' = [ type |-> ForceMoveAPI.REFUTE, state |-> state]
                                         /\ alicesActionCount' = alicesActionCount + 1
                                    ELSE /\ TRUE
                                         /\ UNCHANGED << submittedTX, 
@@ -415,7 +418,7 @@ E == /\ pc["Eve"] = "E"
                            /\ IF ~validState(state)
                                  THEN /\ PrintT((<<"forceMove", state>>))
                                       /\ Assert(FALSE, 
-                                                "Failure of assertion at line 114, column 5 of macro called at line 243, column 12.")
+                                                "Failure of assertion at line 114, column 5 of macro called at line 244, column 12.")
                                  ELSE /\ TRUE
                            /\ IF \/ /\ channelOpen
                                     /\ state.turnNumber >= channel.turnNumber
@@ -429,11 +432,11 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validState(state)
                                                   THEN /\ PrintT((<<"respond", state>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 114, column 5 of macro called at line 247, column 12.")
+                                                                 "Failure of assertion at line 114, column 5 of macro called at line 248, column 12.")
                                                   ELSE /\ TRUE
                                             /\ IF validTransition(state)
                                                   THEN /\ Assert((state.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 120, column 1 of macro called at line 247, column 12.")
+                                                                 "Failure of assertion at line 120, column 1 of macro called at line 248, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> (state.turnNumber)
@@ -444,11 +447,11 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validState(state)
                                                   THEN /\ PrintT((<<"checkpoint", state>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 114, column 5 of macro called at line 249, column 12.")
+                                                                 "Failure of assertion at line 114, column 5 of macro called at line 250, column 12.")
                                                   ELSE /\ TRUE
                                             /\ IF increasesTurnNumber(state)
                                                   THEN /\ Assert((state.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 120, column 1 of macro called at line 249, column 12.")
+                                                                 "Failure of assertion at line 120, column 1 of macro called at line 250, column 12.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> (state.turnNumber)
@@ -478,7 +481,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-c817b59c5512c8db3b5be57052d58ec3
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-80073c338b3a2f45e7aad3658d59e8e6
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -521,5 +524,5 @@ EveCannotFrontRun == [][~(
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 09 08:56:48 PDT 2020 by andrewstewart
+\* Last modified Tue Jun 09 10:18:52 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
