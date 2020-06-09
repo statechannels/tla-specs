@@ -3,6 +3,7 @@ EXTENDS Integers, TLC, Utils
 CONSTANTS
     StartingTurnNumber,
     NumParticipants,
+    MaxActions,
     NULL
 (***************************************************************************)
 (* The purpose of this specification is to outline an algorithm that       *)
@@ -509,7 +510,7 @@ TurnNumberIncrements == [][
 
 
 \* Alice should be able to accomplish her goal by submitting a single transaction.
-AliceCannotBeGriefed == alicesActionCount <= 1
+AliceCannotBeGriefed == alicesActionCount <= MaxActions
 
 \* Eve front runs if she changes the channel after Alice submitted a transaction, but before 
 \* the transaction is processed
@@ -524,5 +525,5 @@ EveCannotFrontRun == [][~(
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 09 10:18:52 PDT 2020 by andrewstewart
+\* Last modified Tue Jun 09 10:20:47 PDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
