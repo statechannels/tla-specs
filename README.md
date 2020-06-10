@@ -145,9 +145,32 @@ TLC can detect the infinite loop if we didn't increment a counter whenever Alice
 We can see that by running `❯ tlc Version1NoCounter.tla -config Success.cfg > v1-no-counter.txt`, and inspecting its [error trace](v1-no-counter.txt)
 
 ## V2
-
 | State       | Action               | NextState   | Requirements       |
 | ----------- | -------------------- | ----------- | ------------------ |
 | Open(n)     | forceMove(m, s\*, p) | Chal(m,s,p) | m >= n             |
 | Chal(n,s,p) | respond(n+1,s, s')   | Open(n+1)   | s->s'              |
 | Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |                    |
+
+Since Eve can force an infinite loop if she can reliably front-run, we have no choice but to remove `refute` from the ForceMove API.
+
+This yields a successful result: Alice is guaranteed to be able to progress the channel:
+```
+❯ tlc Version2 -config Success.cfg
+Starting... (2020-06-09 21:16:32)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2020-06-09 21:16:32.
+Progress(6) at 2020-06-09 21:16:32: 561 states generated, 52 distinct states found, 0 states left on queue.
+Checking 2 branches of temporal properties for the complete state space with 104 total distinct states at (2020-06-09 21:16:32)
+Finished checking temporal properties in 00s at 2020-06-09 21:16:32
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.4E-15
+561 states generated, 52 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 6.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 9 and the 95th percentile is 7).
+Finished in 01s at (2020-06-09 21:16:32)
+```
+
+However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Running `❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt`, [we see that](v2-no-grief.txt) needs to submit as many transactions as there are states to force the channel to a certain turn number.

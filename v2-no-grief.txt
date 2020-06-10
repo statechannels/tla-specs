@@ -1,0 +1,322 @@
+TLC2 Version 2.14 of 10 July 2019 (rev: 0cae24f)
+Running breadth-first search Model-Checking with fp 125 and seed 6349797062896713821 with 1 worker on 12 cores with 3641MB heap and 64MB offheap memory [pid: 20376] (Mac OS X 10.13.6 x86_64, Oracle Corporation 11.0.2 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Version2NoGrief.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/ForceMove.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/TLC.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Integers.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Utils.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Naturals.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Sequences.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Utils
+Semantic processing of module ForceMove
+Semantic processing of module Version2NoGrief
+Starting... (2020-06-09 21:55:27)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2020-06-09 21:55:27.
+Error: Invariant AliceCannotBeGriefed is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 0
+
+State 2: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 1
+
+State 3: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 1
+
+State 4: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 1
+
+State 5: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 1, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 1
+
+State 6: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 1, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 2
+
+State 7: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 1, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 2
+
+State 8: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 1, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 2
+
+State 9: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 2, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 2
+
+State 10: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 2, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 3
+
+State 11: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 2, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 3
+
+State 12: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 2, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 3
+
+State 13: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 3
+
+State 14: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 4
+
+State 15: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 3, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 4
+
+State 16: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 3, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 4
+
+State 17: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 4, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 4
+
+State 18: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 4, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 5
+
+State 19: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 5
+
+State 20: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 5
+
+State 21: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 5
+
+State 22: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 6
+
+State 23: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 6
+
+State 24: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 6
+
+State 25: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 6, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 6
+
+State 26: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 6, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 7
+
+State 27: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 6, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 7
+
+State 28: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 6, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 7
+
+State 29: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 7, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 7
+
+State 30: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 7, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 8
+
+State 31: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 7, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 8
+
+State 32: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 7, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 8
+
+State 33: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 8, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 8
+
+State 34: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 8, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 9
+
+State 35: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 8, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 9
+
+State 36: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 8, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 9
+
+State 37: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 9, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 9
+
+State 38: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 9, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 10
+
+State 39: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 9, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 10
+
+State 40: <Adjudicator line 323, col 16 to line 396, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 9, mode |-> "CHALLENGE"]
+/\ Alice = 1
+/\ alicesActionCount = 10
+
+State 41: <E line 454, col 6 to line 529, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 10, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 10
+
+State 42: <A line 400, col 6 to line 450, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 10, mode |-> "OPEN"]
+/\ Alice = 1
+/\ alicesActionCount = 11
+
+9483 states generated, 565 distinct states found, 10 states left on queue.
+The depth of the complete state graph search is 42.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 14 and the 95th percentile is 3).
+Finished in 01s at (2020-06-09 21:55:29)
