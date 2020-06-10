@@ -565,7 +565,7 @@ AliceCannotBeGriefed == alicesActionCount <= MaxActions
 \* the transaction is processed
 \* Violations of this property are therefore _examples_ of Eve's ability to front-run
 \* Alice's transactions
-EveCannotFrontRun == [][~(
+EveDoesntFrontRun == [][~(
     /\ submittedTX # NULL \* transaction has been submitted
     /\ submittedTX' = submittedTX \* transaction is not processed
     /\ channel' # channel \* channel is changed
