@@ -123,3 +123,31 @@ State 4: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 /\ Alice = 2
 /\ alicesActionCount = 1
 ```
+
+# Protocol versions
+## V1
+
+| State       | Action               | NextState   | Requirements       |
+| ----------- | -------------------- | ----------- | ------------------ |
+| Open(n)     | forceMove(m, s\*, p) | Chal(m,s,p) | m >= n             |
+| Chal(n,s,p) | respond(n+1,s, s')   | Open(n+1)   | s->s'              |
+| Chal(n,s,p) | refute(m, s, s')     | Open(n)     | m > n, p signed s' |
+| Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |                    |
+
+
+In this version of the spec, we ignore responding with alternative moves.
+Alice employs the strategy of calling `forceMove` when she can, and otherwise
+calling `refute` if Eve calls `forceMove` with a stale state.
+
+Running `❯ tlc Version1.tla -config Success.cfg > v1-problems.txt`, and inspecting the [error trace](v1-problems.txt), we see that Eve was able to enter an infinite cycle, since she is able to cycle between `[turnNumber |-> 0, mode |-> "OPEN"]` and `[turnNumber |-> 0, mode |-> "CHALLENGE"]`. 
+
+TLC can detect the infinite loop if we didn't increment a counter whenever Alice submits transactions.
+We can see that by running `❯ tlc Version1NoCounter.tla -config Success.cfg > v1-no-counter.txt`, and inspecting its [error trace](v1-no-counter.txt)
+
+## V2
+
+| State       | Action               | NextState   | Requirements       |
+| ----------- | -------------------- | ----------- | ------------------ |
+| Open(n)     | forceMove(m, s\*, p) | Chal(m,s,p) | m >= n             |
+| Chal(n,s,p) | respond(n+1,s, s')   | Open(n+1)   | s->s'              |
+| Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |                    |

@@ -1,0 +1,68 @@
+TLC2 Version 2.14 of 10 July 2019 (rev: 0cae24f)
+Running breadth-first search Model-Checking with fp 12 and seed 978873911999156740 with 1 worker on 12 cores with 3641MB heap and 64MB offheap memory [pid: 2952] (Mac OS X 10.13.6 x86_64, Oracle Corporation 11.0.2 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Version1NoCounter.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/ForceMove.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/TLC.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Integers.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Utils.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Naturals.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Sequences.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Utils
+Semantic processing of module ForceMove
+Semantic processing of module Version1NoCounter
+Starting... (2020-06-09 21:01:05)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2020-06-09 21:01:05.
+Progress(7) at 2020-06-09 21:01:06: 1,439 states generated, 106 distinct states found, 0 states left on queue.
+Checking 2 branches of temporal properties for the complete state space with 212 total distinct states at (2020-06-09 21:01:06)
+Error: Temporal properties were violated.
+
+Error: The following behavior constitutes a counter-example:
+
+State 1: <Initial predicate>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 2: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 3: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 4: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 5: <A line 397, col 6 to line 447, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 7], type |-> "REFUTE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+Back to state 3: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
+
+Finished checking temporal properties in 00s at 2020-06-09 21:01:06
+1439 states generated, 106 distinct states found, 0 states left on queue.
+Finished in 00s at (2020-06-09 21:01:06)

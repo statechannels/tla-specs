@@ -1,0 +1,105 @@
+TLC2 Version 2.14 of 10 July 2019 (rev: 0cae24f)
+Running breadth-first search Model-Checking with fp 97 and seed -2707441539784394856 with 1 worker on 12 cores with 3641MB heap and 64MB offheap memory [pid: 82995] (Mac OS X 10.13.6 x86_64, Oracle Corporation 11.0.2 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Version1.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/ForceMove.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/TLC.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Integers.tla
+Parsing file /Users/andrewstewart/Code/magmo/tla-specs/Utils.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Naturals.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/Sequences.tla
+Parsing file /private/var/folders/qp/rsls0bwn2p99qffhs69_ffbc0000gn/T/FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Utils
+Semantic processing of module ForceMove
+Semantic processing of module Version1
+Starting... (2020-06-09 12:21:57)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2020-06-09 12:21:57.
+Error: Invariant AliceCannotBeGriefed is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 2: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 0
+
+State 3: <A line 397, col 6 to line 447, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 1
+
+State 4: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 1
+
+State 5: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 1
+
+State 6: <A line 397, col 6 to line 447, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 2
+
+State 7: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 2
+
+State 8: <E line 451, col 6 to line 525, col 61 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 2
+
+State 9: <A line 397, col 6 to line 447, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ Alice = 2
+/\ alicesActionCount = 3
+
+State 10: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
+/\ submittedTX = NULL
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 3
+
+State 11: <A line 397, col 6 to line 447, col 38 of module ForceMove>
+/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
+/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ Alice = 2
+/\ alicesActionCount = 4
+
+3829 states generated, 309 distinct states found, 41 states left on queue.
+The depth of the complete state graph search is 11.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 9 and the 95th percentile is 5).
+Finished in 01s at (2020-06-09 12:21:58)
