@@ -14,14 +14,16 @@ This repository contains TLA+ specifications of various protocols used by wallet
 3. If you didn't read the article, follow [these instructions](https://github.com/pmer/tla-bin#installation).
    - The TLA+ Toolkit isn't _that_ bad. It makes your specs look nice!
 4. Try out a model: `tlc Version1 -config Success.cfg`.
-5. Try out a model that "fails": `tlc Version1 -config EveCannotFrontRun.cfg`
-  - This actually produces an error trace that exhibits Eve's ability to "front-run", according to the spec's design.
+5. Try out a model that "fails": `tlc Version1 -config EveDoesntFrontRun.cfg`
 
-## Interpretation of `EveCannotFrontRun`
+- This actually produces an error trace that exhibits Eve's ability to "front-run", according to the spec's design.
 
-First, here's the definition 
+## Interpretation of `EveDoesntFrontRun`
+
+First, here's the definition
+
 ```
-EveCannotFrontRun == [][~(
+EveDoesntFrontRun == [][~(
     /\ submittedTX # NULL \* transaction has been submitted
     /\ submittedTX' = submittedTX \* transaction is not processed
     /\ channel' # channel \* channel is changed
@@ -33,7 +35,9 @@ This is a temporal property, which specifies how variables can change:
 `channel'` is the value of the `channel` variable after the action.
 
 In plain English, the property states:
+
 > It is never true that
+>
 > 1. the submitted transaction `submittedTx` is not null AND
 > 2. the submitted transaction `submittedTx` does not change AND
 > 3. the channel `channel` does change
@@ -43,9 +47,8 @@ that transaction is recorded, then 1-3 will all hold.
 
 Therefore, violations of this property are examples of Eve front-running Alice:
 
-
 ```
-Error: Action property EveCannotFrontRun is violated.
+Error: Action property EveDoesntFrontRun is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
 /\ submittedTX = NULL
@@ -62,7 +65,7 @@ State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
 /\ Alice = 2
 /\ alicesActionCount = 1
 
-# In this state, the transaction is still submitted, but the (on-chain) channel 
+# In this state, the transaction is still submitted, but the (on-chain) channel
 # state has been updated before the adjudicator processed the transaction.
 # Eve has mined a ForceMove transaction before Alice's transaction is mined,
 # updating the `channell` variable to a challenge mode.
@@ -79,7 +82,7 @@ This gives us confidence that our spec is accurately emulating Eve's ability to 
 If we wish, we can observe more interesting traces, where we force some specific on-chain state while Alice's transaction is pending:
 
 ```
-EveCannotFrontRun == [][~(
+EveDoesntFrontRun == [][~(
     /\ submittedTX # NULL \* transaction has been submitted
     /\ submittedTX' = submittedTX \* transaction is not processed
     /\ channel' # channel \* channel is changed
@@ -89,8 +92,9 @@ EveCannotFrontRun == [][~(
 ```
 
 This resulted in
+
 ```
-Error: Action property EveCannotFrontRun is violated.
+Error: Action property EveDoesntFrontRun is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
 /\ submittedTX = NULL
@@ -125,6 +129,7 @@ State 4: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 ```
 
 # Protocol versions
+
 ## V1
 
 | State       | Action               | NextState   | Requirements       |
@@ -134,26 +139,27 @@ State 4: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 | Chal(n,s,p) | refute(m, s, s')     | Open(n)     | m > n, p signed s' |
 | Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |                    |
 
-
 In this version of the spec, we ignore responding with alternative moves.
 Alice employs the strategy of calling `forceMove` when she can, and otherwise
 calling `refute` if Eve calls `forceMove` with a stale state.
 
-Running `❯ tlc Version1.tla -config Success.cfg > v1-problems.txt`, and inspecting the [error trace](v1-problems.txt), we see that Eve was able to enter an infinite cycle, since she is able to cycle between `[turnNumber |-> 0, mode |-> "OPEN"]` and `[turnNumber |-> 0, mode |-> "CHALLENGE"]`. 
+Running `❯ tlc Version1.tla -config Success.cfg > v1-problems.txt`, and inspecting the [error trace](v1-problems.txt), we see that Eve was able to enter an infinite cycle, since she is able to cycle between `[turnNumber |-> 0, mode |-> "OPEN"]` and `[turnNumber |-> 0, mode |-> "CHALLENGE"]`.
 
 TLC can detect the infinite loop if we didn't increment a counter whenever Alice submits transactions.
 We can see that by running `❯ tlc Version1NoCounter.tla -config Success.cfg > v1-no-counter.txt`, and inspecting its [error trace](v1-no-counter.txt)
 
 ## V2
-| State       | Action               | NextState   | Requirements       |
-| ----------- | -------------------- | ----------- | ------------------ |
-| Open(n)     | forceMove(m, s\*, p) | Chal(m,s,p) | m >= n             |
-| Chal(n,s,p) | respond(n+1,s, s')   | Open(n+1)   | s->s'              |
-| Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |                    |
+
+| State       | Action               | NextState   | Requirements |
+| ----------- | -------------------- | ----------- | ------------ |
+| Open(n)     | forceMove(m, s\*, p) | Chal(m,s,p) | m >= n       |
+| Chal(n,s,p) | respond(n+1,s, s')   | Open(n+1)   | s->s'        |
+| Chal(n,s,p) | altRespond(n+1)      | Open(n+1)   |              |
 
 Since Eve can force an infinite loop if she can reliably front-run, we have no choice but to remove `refute` from the ForceMove API.
 
 This yields a successful result: Alice is guaranteed to be able to progress the channel:
+
 ```
 ❯ tlc Version2 -config Success.cfg
 Starting... (2020-06-09 21:16:32)
@@ -175,8 +181,8 @@ Finished in 01s at (2020-06-09 21:16:32)
 
 However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Running `❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt`, [we see that](v2-no-grief.txt) needs to submit as many transactions as there are states to force the channel to a certain turn number.
 
-
 ## V3
+
 | State       | Action            | NextState    | Requirements |
 | ----------- | ----------------- | ------------ | ------------ |
 | Open(n)     | forceMove(m,s,p)  | Chal(m,s,p)  | m >= n       |
@@ -187,6 +193,7 @@ However, this is not satisfactory. Eve can grief Alice by front-running `forceMo
 
 Thus, we change the semantics of `forceMove` to overwrite existing challenges, if it increases the turn number.
 This maximally simplifies Alice's strategy -- she can submit a `forceMove` transaction with her latest supported state, and no amount of front-running will prevent her from progressing the channel in a constant number of actions:
+
 ```
 ❯ tlc Version3.tla -config Success.cfg
 Starting... (2020-06-09 22:05:03)
@@ -207,6 +214,7 @@ Finished in 01s at (2020-06-09 22:05:03)
 ```
 
 In this version, we also introduced a `checkpoint` operation: the original `respondWithAlternativeMove` described in the nitro paper (TODO: LINK) had two limitations:
+
 - the turn number must increase by exactly 1
 - the channel must be in the challenge mode.
 
