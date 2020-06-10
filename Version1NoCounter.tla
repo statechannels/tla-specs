@@ -6,7 +6,7 @@ const_NumParticipants == 2
 const_MaxActions == 3
 const_CountActions == FALSE
 const_ForceMoveOverwrites == FALSE
-const_AlicesStrategy == "Refute"
+const_AliceRefutes == TRUE
 const_EveCheckpoints == FALSE
 const_EveRefutes == TRUE
 def_ov_Nat == 0..20

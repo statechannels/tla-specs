@@ -8,7 +8,7 @@ CONSTANTS
     EveRefutes,
     EveCheckpoints,
     ForceMoveOverwrites,
-    AlicesStrategy,
+    AliceRefutes,
     NULL
 (***************************************************************************)
 (* The purpose of this specification is to outline an algorithm that       *)
@@ -220,13 +220,11 @@ while ~AlicesGoalMet do
     await submittedTX = NULL;
     if challengeOngoing then with turnNumber = channel.turnNumber do
         if turnNumber < LatestTurnNumber then
-            if AlicesStrategy = "Refute" then with  state = CHOOSE s \in StoredStates :
+            if AliceRefutes then with  state = CHOOSE s \in StoredStates :
                 /\ s.turnNumber > channel.turnNumber
                 /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber)
              do submitTX([ type |-> ForceMoveAPI.REFUTE, state |-> state]);
             end with;
-            elsif AlicesStrategy = "Checkpoint" then 
-             submitTX([ type |-> ForceMoveAPI.CHECKPOINT, state |-> [turnNumber -> LatestTurnNumber ]]);
             end if;
         end if;
     end with; else 
@@ -267,7 +265,7 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-ee6d264dacc689768a0d8b2585aa29ca
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-750f5dd145289f0702dcecdcc9e9d1be
 VARIABLES channel, submittedTX, Alice, alicesActionCount, pc
 
 (* define statement *)
@@ -403,8 +401,8 @@ A == /\ pc["Alice"] = "A"
                 /\ IF challengeOngoing
                       THEN /\ LET turnNumber == channel.turnNumber IN
                                 IF turnNumber < LatestTurnNumber
-                                   THEN /\ IF AlicesStrategy = "Refute"
-                                              THEN /\ LET state ==                                             CHOOSE s \in StoredStates :
+                                   THEN /\ IF AliceRefutes
+                                              THEN /\ LET state ==                                CHOOSE s \in StoredStates :
                                                                    /\ s.turnNumber > channel.turnNumber
                                                                    /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber) IN
                                                         /\ IF submittedTX # NULL
@@ -417,27 +415,16 @@ A == /\ pc["Alice"] = "A"
                                                               THEN /\ alicesActionCount' = alicesActionCount + 1
                                                               ELSE /\ TRUE
                                                                    /\ UNCHANGED alicesActionCount
-                                              ELSE /\ IF AlicesStrategy = "Checkpoint"
-                                                         THEN /\ IF submittedTX # NULL
-                                                                    THEN /\ PrintT((<<submittedTX, ([ type |-> ForceMoveAPI.CHECKPOINT, state |-> [turnNumber -> LatestTurnNumber ]])>>))
-                                                                         /\ Assert(FALSE, 
-                                                                                   "Failure of assertion at line 180, column 5 of macro called at line 229, column 14.")
-                                                                    ELSE /\ TRUE
-                                                              /\ submittedTX' = [ type |-> ForceMoveAPI.CHECKPOINT, state |-> [turnNumber -> LatestTurnNumber ]]
-                                                              /\ IF CountActions
-                                                                    THEN /\ alicesActionCount' = alicesActionCount + 1
-                                                                    ELSE /\ TRUE
-                                                                         /\ UNCHANGED alicesActionCount
-                                                         ELSE /\ TRUE
-                                                              /\ UNCHANGED << submittedTX, 
-                                                                              alicesActionCount >>
+                                              ELSE /\ TRUE
+                                                   /\ UNCHANGED << submittedTX, 
+                                                                   alicesActionCount >>
                                    ELSE /\ TRUE
                                         /\ UNCHANGED << submittedTX, 
                                                         alicesActionCount >>
                       ELSE /\ IF submittedTX # NULL
                                  THEN /\ PrintT((<<submittedTX, ([state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE])>>))
                                       /\ Assert(FALSE, 
-                                                "Failure of assertion at line 180, column 5 of macro called at line 233, column 9.")
+                                                "Failure of assertion at line 180, column 5 of macro called at line 231, column 9.")
                                  ELSE /\ TRUE
                            /\ submittedTX' = [state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE]
                            /\ IF CountActions
@@ -457,7 +444,7 @@ E == /\ pc["Eve"] = "E"
                            /\ IF ~validState(state)
                                  THEN /\ PrintT((<<"forceMove", state>>))
                                       /\ Assert(FALSE, 
-                                                "Failure of assertion at line 120, column 5 of macro called at line 254, column 12.")
+                                                "Failure of assertion at line 120, column 5 of macro called at line 252, column 12.")
                                  ELSE /\ TRUE
                            /\ IF \/ /\ channelOpen
                                     /\ state.turnNumber >= channel.turnNumber
@@ -472,11 +459,11 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF ~validState(state)
                                                   THEN /\ PrintT((<<"respond", state>>))
                                                        /\ Assert(FALSE, 
-                                                                 "Failure of assertion at line 120, column 5 of macro called at line 258, column 47.")
+                                                                 "Failure of assertion at line 120, column 5 of macro called at line 256, column 47.")
                                                   ELSE /\ TRUE
                                             /\ IF validTransition(state)
                                                   THEN /\ Assert((state.turnNumber) \in Nat, 
-                                                                 "Failure of assertion at line 126, column 1 of macro called at line 258, column 47.")
+                                                                 "Failure of assertion at line 126, column 1 of macro called at line 256, column 47.")
                                                        /\ channel' =            [
                                                                          mode |-> ChannelMode.OPEN,
                                                                          turnNumber |-> (state.turnNumber)
@@ -488,11 +475,11 @@ E == /\ pc["Eve"] = "E"
                                                        /\ IF ~validState(state)
                                                              THEN /\ PrintT((<<"checkpoint", state>>))
                                                                   /\ Assert(FALSE, 
-                                                                            "Failure of assertion at line 120, column 5 of macro called at line 259, column 73.")
+                                                                            "Failure of assertion at line 120, column 5 of macro called at line 257, column 73.")
                                                              ELSE /\ TRUE
                                                        /\ IF increasesTurnNumber(state)
                                                              THEN /\ Assert((state.turnNumber) \in Nat, 
-                                                                            "Failure of assertion at line 126, column 1 of macro called at line 259, column 73.")
+                                                                            "Failure of assertion at line 126, column 1 of macro called at line 257, column 73.")
                                                                   /\ channel' =            [
                                                                                     mode |-> ChannelMode.OPEN,
                                                                                     turnNumber |-> (state.turnNumber)
@@ -506,13 +493,13 @@ E == /\ pc["Eve"] = "E"
                                                        /\ IF ~validState(state)
                                                              THEN /\ PrintT((<<"refute", state>>))
                                                                   /\ Assert(FALSE, 
-                                                                            "Failure of assertion at line 120, column 5 of macro called at line 260, column 60.")
+                                                                            "Failure of assertion at line 120, column 5 of macro called at line 258, column 60.")
                                                              ELSE /\ TRUE
                                                        /\ IF /\ challengeOngoing
                                                              /\ ParticipantIDX(state.turnNumber) = ParticipantIDX(channel.turnNumber)
                                                              /\ state.turnNumber > channel.turnNumber
                                                              THEN /\ Assert((channel.turnNumber) \in Nat, 
-                                                                            "Failure of assertion at line 126, column 1 of macro called at line 260, column 60.")
+                                                                            "Failure of assertion at line 126, column 1 of macro called at line 258, column 60.")
                                                                   /\ channel' =            [
                                                                                     mode |-> ChannelMode.OPEN,
                                                                                     turnNumber |-> (channel.turnNumber)
@@ -544,7 +531,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-0cd988882cd3bf6c80d8a1bbacc4e885
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-a419ceb704a14b51edc924f9e4e40a63
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -587,5 +574,5 @@ EveCannotFrontRun == [][~(
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 09 21:09:55 MDT 2020 by andrewstewart
+\* Last modified Tue Jun 09 21:58:03 MDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
