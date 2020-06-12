@@ -23,77 +23,77 @@ Finished computing initial states: 1 distinct state generated at 2020-06-09 12:2
 Error: Invariant AliceCannotBeGriefed is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 2: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 3: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
 State 4: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
 State 5: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
 State 6: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 2
 
 State 7: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 2
 
 State 8: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 2
 
 State 9: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "REFUTE"]
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 3
 
 State 10: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 3
 
 State 11: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2

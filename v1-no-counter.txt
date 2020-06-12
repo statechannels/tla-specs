@@ -27,35 +27,35 @@ Error: Temporal properties were violated.
 Error: The following behavior constitutes a counter-example:
 
 State 1: <Initial predicate>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 2: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 3: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 4: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
+/\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 5: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 7], type |-> "REFUTE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 7], type |-> "REFUTE"]
 /\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
 /\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 2

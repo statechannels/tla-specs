@@ -68,7 +68,7 @@ ASSUME
 
 variables
     channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ],
-    submittedTX = NULL,
+    TranactionPool = NULL,
     Alice \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) },
     alicesActionCount = 0
     \* We can't specify any properties that require any memory of the
@@ -174,12 +174,12 @@ end macro;
 
 macro submitTX(transaction)
 begin
-if submittedTX # NULL
+if TranactionPool # NULL
 then
-    print(<<submittedTX, transaction>>);
+    print(<<TranactionPool, transaction>>);
     assert FALSE;
 end if;
-submittedTX := transaction;
+TranactionPool := transaction;
 if CountActions then alicesActionCount := alicesActionCount + 1; end if;
 end macro;
 
@@ -189,15 +189,15 @@ begin
 (* This process records submitted transactions.                            *)
 (***************************************************************************)
 Adjudicator:
-while ~AlicesGoalMet \/ submittedTX # NULL do
-    if submittedTX # NULL then
-        if    submittedTX.type = ForceMoveAPI.FORCE_MOVE then forceMove(submittedTX.state);
-        elsif submittedTX.type = ForceMoveAPI.RESPOND    then respondWithMove(submittedTX.state);
-        elsif submittedTX.type = ForceMoveAPI.REFUTE     then refute(submittedTX.state);
-        elsif submittedTX.type = ForceMoveAPI.CHECKPOINT then checkpoint(submittedTX.state);
+while ~AlicesGoalMet \/ TranactionPool # NULL do
+    if TranactionPool # NULL then
+        if    TranactionPool.type = ForceMoveAPI.FORCE_MOVE then forceMove(TranactionPool.state);
+        elsif TranactionPool.type = ForceMoveAPI.RESPOND    then respondWithMove(TranactionPool.state);
+        elsif TranactionPool.type = ForceMoveAPI.REFUTE     then refute(TranactionPool.state);
+        elsif TranactionPool.type = ForceMoveAPI.CHECKPOINT then checkpoint(TranactionPool.state);
         else assert FALSE;
         end if;
-        submittedTX := NULL;
+        TranactionPool := NULL;
     end if;
 end while;
 end process;
@@ -217,7 +217,7 @@ begin
 (***************************************************************************)
 A:
 while ~AlicesGoalMet do
-    await submittedTX = NULL;
+    await TranactionPool = NULL;
     if challengeOngoing then with turnNumber = channel.turnNumber do
         if turnNumber < LatestTurnNumber then
             if AliceRefutes then with  state = CHOOSE s \in StoredStates :
@@ -265,8 +265,8 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-750f5dd145289f0702dcecdcc9e9d1be
-VARIABLES channel, submittedTX, Alice, alicesActionCount, pc
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-81b32f2d19eca8b3f37b72b138b4e3d3
+VARIABLES channel, TranactionPool, Alice, alicesActionCount, pc
 
 (* define statement *)
 Number == Nat \cup { 0 }
@@ -305,13 +305,13 @@ validTransition(c) ==
 AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
 
 
-vars == << channel, submittedTX, Alice, alicesActionCount, pc >>
+vars == << channel, TranactionPool, Alice, alicesActionCount, pc >>
 
 ProcSet == {"Adjudicator"} \cup {"Alice"} \cup {"Eve"}
 
 Init == (* Global variables *)
         /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
-        /\ submittedTX = NULL
+        /\ TranactionPool = NULL
         /\ Alice \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) }
         /\ alicesActionCount = 0
         /\ pc = [self \in ProcSet |-> CASE self = "Adjudicator" -> "Adjudicator"
@@ -319,85 +319,85 @@ Init == (* Global variables *)
                                         [] self = "Eve" -> "E"]
 
 Adjudicator == /\ pc["Adjudicator"] = "Adjudicator"
-               /\ IF ~AlicesGoalMet \/ submittedTX # NULL
-                     THEN /\ IF submittedTX # NULL
-                                THEN /\ IF submittedTX.type = ForceMoveAPI.FORCE_MOVE
-                                           THEN /\ IF ~validState((submittedTX.state))
-                                                      THEN /\ PrintT((<<"forceMove", (submittedTX.state)>>))
+               /\ IF ~AlicesGoalMet \/ TranactionPool # NULL
+                     THEN /\ IF TranactionPool # NULL
+                                THEN /\ IF TranactionPool.type = ForceMoveAPI.FORCE_MOVE
+                                           THEN /\ IF ~validState((TranactionPool.state))
+                                                      THEN /\ PrintT((<<"forceMove", (TranactionPool.state)>>))
                                                            /\ Assert(FALSE, 
-                                                                     "Failure of assertion at line 120, column 5 of macro called at line 194, column 63.")
+                                                                     "Failure of assertion at line 120, column 5 of macro called at line 194, column 66.")
                                                       ELSE /\ TRUE
                                                 /\ IF \/ /\ channelOpen
-                                                         /\ (submittedTX.state).turnNumber >= channel.turnNumber
+                                                         /\ (TranactionPool.state).turnNumber >= channel.turnNumber
                                                       \/ /\ challengeOngoing
                                                          /\ ForceMoveOverwrites
-                                                         /\ (submittedTX.state).turnNumber > channel.turnNumber
-                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (submittedTX.state).turnNumber ]
+                                                         /\ (TranactionPool.state).turnNumber > channel.turnNumber
+                                                      THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (TranactionPool.state).turnNumber ]
                                                       ELSE /\ TRUE
                                                            /\ UNCHANGED channel
-                                           ELSE /\ IF submittedTX.type = ForceMoveAPI.RESPOND
-                                                      THEN /\ IF ~validState((submittedTX.state))
-                                                                 THEN /\ PrintT((<<"respond", (submittedTX.state)>>))
+                                           ELSE /\ IF TranactionPool.type = ForceMoveAPI.RESPOND
+                                                      THEN /\ IF ~validState((TranactionPool.state))
+                                                                 THEN /\ PrintT((<<"respond", (TranactionPool.state)>>))
                                                                       /\ Assert(FALSE, 
-                                                                                "Failure of assertion at line 120, column 5 of macro called at line 195, column 63.")
+                                                                                "Failure of assertion at line 120, column 5 of macro called at line 195, column 66.")
                                                                  ELSE /\ TRUE
-                                                           /\ IF validTransition((submittedTX.state))
-                                                                 THEN /\ Assert(((submittedTX.state).turnNumber) \in Nat, 
-                                                                                "Failure of assertion at line 126, column 1 of macro called at line 195, column 63.")
+                                                           /\ IF validTransition((TranactionPool.state))
+                                                                 THEN /\ Assert(((TranactionPool.state).turnNumber) \in Nat, 
+                                                                                "Failure of assertion at line 126, column 1 of macro called at line 195, column 66.")
                                                                       /\ channel' =            [
                                                                                         mode |-> ChannelMode.OPEN,
-                                                                                        turnNumber |-> ((submittedTX.state).turnNumber)
+                                                                                        turnNumber |-> ((TranactionPool.state).turnNumber)
                                                                                     ]
                                                                  ELSE /\ TRUE
                                                                       /\ UNCHANGED channel
-                                                      ELSE /\ IF submittedTX.type = ForceMoveAPI.REFUTE
-                                                                 THEN /\ IF ~validState((submittedTX.state))
-                                                                            THEN /\ PrintT((<<"refute", (submittedTX.state)>>))
+                                                      ELSE /\ IF TranactionPool.type = ForceMoveAPI.REFUTE
+                                                                 THEN /\ IF ~validState((TranactionPool.state))
+                                                                            THEN /\ PrintT((<<"refute", (TranactionPool.state)>>))
                                                                                  /\ Assert(FALSE, 
-                                                                                           "Failure of assertion at line 120, column 5 of macro called at line 196, column 63.")
+                                                                                           "Failure of assertion at line 120, column 5 of macro called at line 196, column 66.")
                                                                             ELSE /\ TRUE
                                                                       /\ IF /\ challengeOngoing
-                                                                            /\ ParticipantIDX((submittedTX.state).turnNumber) = ParticipantIDX(channel.turnNumber)
-                                                                            /\ (submittedTX.state).turnNumber > channel.turnNumber
+                                                                            /\ ParticipantIDX((TranactionPool.state).turnNumber) = ParticipantIDX(channel.turnNumber)
+                                                                            /\ (TranactionPool.state).turnNumber > channel.turnNumber
                                                                             THEN /\ Assert((channel.turnNumber) \in Nat, 
-                                                                                           "Failure of assertion at line 126, column 1 of macro called at line 196, column 63.")
+                                                                                           "Failure of assertion at line 126, column 1 of macro called at line 196, column 66.")
                                                                                  /\ channel' =            [
                                                                                                    mode |-> ChannelMode.OPEN,
                                                                                                    turnNumber |-> (channel.turnNumber)
                                                                                                ]
                                                                             ELSE /\ TRUE
                                                                                  /\ UNCHANGED channel
-                                                                 ELSE /\ IF submittedTX.type = ForceMoveAPI.CHECKPOINT
-                                                                            THEN /\ IF ~validState((submittedTX.state))
-                                                                                       THEN /\ PrintT((<<"checkpoint", (submittedTX.state)>>))
+                                                                 ELSE /\ IF TranactionPool.type = ForceMoveAPI.CHECKPOINT
+                                                                            THEN /\ IF ~validState((TranactionPool.state))
+                                                                                       THEN /\ PrintT((<<"checkpoint", (TranactionPool.state)>>))
                                                                                             /\ Assert(FALSE, 
-                                                                                                      "Failure of assertion at line 120, column 5 of macro called at line 197, column 63.")
+                                                                                                      "Failure of assertion at line 120, column 5 of macro called at line 197, column 66.")
                                                                                        ELSE /\ TRUE
-                                                                                 /\ IF increasesTurnNumber((submittedTX.state))
-                                                                                       THEN /\ Assert(((submittedTX.state).turnNumber) \in Nat, 
-                                                                                                      "Failure of assertion at line 126, column 1 of macro called at line 197, column 63.")
+                                                                                 /\ IF increasesTurnNumber((TranactionPool.state))
+                                                                                       THEN /\ Assert(((TranactionPool.state).turnNumber) \in Nat, 
+                                                                                                      "Failure of assertion at line 126, column 1 of macro called at line 197, column 66.")
                                                                                             /\ channel' =            [
                                                                                                               mode |-> ChannelMode.OPEN,
-                                                                                                              turnNumber |-> ((submittedTX.state).turnNumber)
+                                                                                                              turnNumber |-> ((TranactionPool.state).turnNumber)
                                                                                                           ]
                                                                                        ELSE /\ TRUE
                                                                                             /\ UNCHANGED channel
                                                                             ELSE /\ Assert(FALSE, 
                                                                                            "Failure of assertion at line 198, column 14.")
                                                                                  /\ UNCHANGED channel
-                                     /\ submittedTX' = NULL
+                                     /\ TranactionPool' = NULL
                                 ELSE /\ TRUE
-                                     /\ UNCHANGED << channel, submittedTX >>
+                                     /\ UNCHANGED << channel, TranactionPool >>
                           /\ pc' = [pc EXCEPT !["Adjudicator"] = "Adjudicator"]
                      ELSE /\ pc' = [pc EXCEPT !["Adjudicator"] = "Done"]
-                          /\ UNCHANGED << channel, submittedTX >>
+                          /\ UNCHANGED << channel, TranactionPool >>
                /\ UNCHANGED << Alice, alicesActionCount >>
 
 adjudicator == Adjudicator
 
 A == /\ pc["Alice"] = "A"
      /\ IF ~AlicesGoalMet
-           THEN /\ submittedTX = NULL
+           THEN /\ TranactionPool = NULL
                 /\ IF challengeOngoing
                       THEN /\ LET turnNumber == channel.turnNumber IN
                                 IF turnNumber < LatestTurnNumber
@@ -405,35 +405,35 @@ A == /\ pc["Alice"] = "A"
                                               THEN /\ LET state ==                                CHOOSE s \in StoredStates :
                                                                    /\ s.turnNumber > channel.turnNumber
                                                                    /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber) IN
-                                                        /\ IF submittedTX # NULL
-                                                              THEN /\ PrintT((<<submittedTX, ([ type |-> ForceMoveAPI.REFUTE, state |-> state])>>))
+                                                        /\ IF TranactionPool # NULL
+                                                              THEN /\ PrintT((<<TranactionPool, ([ type |-> ForceMoveAPI.REFUTE, state |-> state])>>))
                                                                    /\ Assert(FALSE, 
                                                                              "Failure of assertion at line 180, column 5 of macro called at line 226, column 17.")
                                                               ELSE /\ TRUE
-                                                        /\ submittedTX' = [ type |-> ForceMoveAPI.REFUTE, state |-> state]
+                                                        /\ TranactionPool' = [ type |-> ForceMoveAPI.REFUTE, state |-> state]
                                                         /\ IF CountActions
                                                               THEN /\ alicesActionCount' = alicesActionCount + 1
                                                               ELSE /\ TRUE
                                                                    /\ UNCHANGED alicesActionCount
                                               ELSE /\ TRUE
-                                                   /\ UNCHANGED << submittedTX, 
+                                                   /\ UNCHANGED << TranactionPool, 
                                                                    alicesActionCount >>
                                    ELSE /\ TRUE
-                                        /\ UNCHANGED << submittedTX, 
+                                        /\ UNCHANGED << TranactionPool, 
                                                         alicesActionCount >>
-                      ELSE /\ IF submittedTX # NULL
-                                 THEN /\ PrintT((<<submittedTX, ([state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE])>>))
+                      ELSE /\ IF TranactionPool # NULL
+                                 THEN /\ PrintT((<<TranactionPool, ([state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE])>>))
                                       /\ Assert(FALSE, 
                                                 "Failure of assertion at line 180, column 5 of macro called at line 231, column 9.")
                                  ELSE /\ TRUE
-                           /\ submittedTX' = [state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE]
+                           /\ TranactionPool' = [state |-> [turnNumber |-> LatestTurnNumber ], type |-> ForceMoveAPI.FORCE_MOVE]
                            /\ IF CountActions
                                  THEN /\ alicesActionCount' = alicesActionCount + 1
                                  ELSE /\ TRUE
                                       /\ UNCHANGED alicesActionCount
                 /\ pc' = [pc EXCEPT !["Alice"] = "A"]
            ELSE /\ pc' = [pc EXCEPT !["Alice"] = "Done"]
-                /\ UNCHANGED << submittedTX, alicesActionCount >>
+                /\ UNCHANGED << TranactionPool, alicesActionCount >>
      /\ UNCHANGED << channel, Alice >>
 
 alice == A
@@ -513,7 +513,7 @@ E == /\ pc["Eve"] = "E"
                 /\ pc' = [pc EXCEPT !["Eve"] = "E"]
            ELSE /\ pc' = [pc EXCEPT !["Eve"] = "Done"]
                 /\ UNCHANGED channel
-     /\ UNCHANGED << submittedTX, Alice, alicesActionCount >>
+     /\ UNCHANGED << TranactionPool, Alice, alicesActionCount >>
 
 eve == E
 
@@ -531,7 +531,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-a419ceb704a14b51edc924f9e4e40a63
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-c90da7596de6a4098917083542c6d77a
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -540,18 +540,18 @@ AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
 
 TypeOK ==
     /\  channel \in AllowedChannels
-    /\  \/ submittedTX \in AllowedTransactions
-        \/ submittedTX = NULL
+    /\  \/ TranactionPool \in AllowedTransactions
+        \/ TranactionPool = NULL
 
 AliceCanProgressChannel == <>[](channel.turnNumber \in TargetTurnNumbers)
     
 \* We can verify that Alice can never directly modify the channel with this property, with
 \* the exception that she can finalize the channel.
 AliceMustSubmitTransactions == [][
-        /\ submittedTX = NULL
-        /\ submittedTX' # NULL
+        /\ TranactionPool = NULL
+        /\ TranactionPool' # NULL
     => UNCHANGED channel
-]_<<submittedTX, channel>>
+]_<<TranactionPool, channel>>
 
 TurnNumberIncrements == [][
     channel'.turnNumber >= channel.turnNumber
@@ -566,13 +566,13 @@ AliceCannotBeGriefed == alicesActionCount <= MaxActions
 \* Violations of this property are therefore _examples_ of Eve's ability to front-run
 \* Alice's transactions
 EveDoesntFrontRun == [][~(
-    /\ submittedTX # NULL \* transaction has been submitted
-    /\ submittedTX' = submittedTX \* transaction is not processed
+    /\ TranactionPool # NULL \* transaction has been submitted
+    /\ TranactionPool' = TranactionPool \* transaction is not processed
     /\ channel' # channel \* channel is changed
-)]_<<submittedTX, channel>>
+)]_<<TranactionPool, channel>>
 
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 09 21:58:03 MDT 2020 by andrewstewart
+\* Last modified Fri Jun 12 08:21:31 MDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
