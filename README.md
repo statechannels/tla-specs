@@ -178,7 +178,11 @@ The average outdegree of the complete state graph is 1 (minimum is 0, the maximu
 Finished in 01s at (2020-06-09 21:16:32)
 ```
 
-However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Running `❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt`, [we see that](v2-no-grief.txt) needs to submit as many transactions as there are states to force the channel to a certain turn number.
+However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Run
+```
+❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt
+```
+We see in the [output](v2-no-grief.txt) that Alice needs to submit as many transactions as there are states to force the channel to a certain turn number.
 
 ## V3
 
