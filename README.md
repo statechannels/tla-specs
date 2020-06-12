@@ -24,23 +24,22 @@ First, here's the definition
 
 ```
 EveDoesntFrontRun == [][~(
-    /\ submittedTX # NULL \* transaction has been submitted
-    /\ submittedTX' = submittedTX \* transaction is not processed
-    /\ channel' # channel \* channel is changed
-)]_<<submittedTX, channel>>
+    /\ TransactionPool # NULL \* transaction has been submitted
+    /\ TransactionPool' = TransactionPool \* transaction is not processed
+    /\ adjudicator' # adjudicator \* adjudicator is changed
+)]_<<TransactionPool, adjudicator>>
 ```
 
 This is a temporal property, which specifies how variables can change:
-`channel` is the value of the `channel` variable before the action, and
-`channel'` is the value of the `channel` variable after the action.
+`adjudicator` is the value of the `adjudicator` variable before the action, and
+`adjudicator'` is the value of the `adjudicator` variable after the action.
 
 In plain English, the property states:
 
 > It is never true that
->
-> 1. the submitted transaction `submittedTx` is not null AND
-> 2. the submitted transaction `submittedTx` does not change AND
-> 3. the channel `channel` does change
+> 1. the submitted transaction stored in `TransactionPool` is not null AND
+> 2. the submitted transaction stored in `TransactionPool` does not change AND
+> 3. the channel value stored in `adjudicator` does change
 
 Of course, if Eve takes an action after Alice has submitted a transaction, but before
 that transaction is recorded, then 1-3 will all hold.
@@ -51,28 +50,28 @@ Therefore, violations of this property are examples of Eve front-running Alice:
 Error: Action property EveDoesntFrontRun is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 # In this state, Alice "submits a transaction", with turn number 6
 State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
-# In this state, the transaction is still submitted, but the (on-chain) channel
-# state has been updated before the adjudicator processed the transaction.
+# In this state, the transaction is still submitted, but the (on-chain) adjudicator 
+# state has been updated before the TransactionProcessor processed the transaction.
 # Eve has mined a ForceMove transaction before Alice's transaction is mined,
-# updating the `channell` variable to a challenge mode.
+# updating the `adjudicatorl` variable to a challenge mode.
 State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 ```
@@ -83,12 +82,12 @@ If we wish, we can observe more interesting traces, where we force some specific
 
 ```
 EveDoesntFrontRun == [][~(
-    /\ submittedTX # NULL \* transaction has been submitted
-    /\ submittedTX' = submittedTX \* transaction is not processed
-    /\ channel' # channel \* channel is changed
-    /\ channel'.turnNumber \in { 3,4 }
-    /\ channel'.mode = ChannelMode.OPEN
-)]_<<submittedTX, channel>>
+    /\ TransactionPool # NULL \* transaction has been submitted
+    /\ TransactionPool' = TransactionPool \* transaction is not processed
+    /\ adjudicator' # adjudicator \* adjudicator is changed
+    /\ adjudicator'.turnNumber \in { 3,4 }
+    /\ adjudicator'.mode = adjudicatorMode.OPEN
+)]_<<TransactionPool, adjudicator>>
 ```
 
 This resulted in
@@ -97,33 +96,33 @@ This resulted in
 Error: Action property EveDoesntFrontRun is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 # Alice submitted a ForceMove transaction
 State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
 # Eve mined a ForceMove transaction
 State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
 # Eve mined a Checkpoint transaction
 State 4: <E line 383, col 6 to line 434, col 61 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 ```
@@ -179,7 +178,11 @@ The average outdegree of the complete state graph is 1 (minimum is 0, the maximu
 Finished in 01s at (2020-06-09 21:16:32)
 ```
 
-However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Running `❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt`, [we see that](v2-no-grief.txt) needs to submit as many transactions as there are states to force the channel to a certain turn number.
+However, this is not satisfactory. Eve can grief Alice by front-running `forceMove(s10^*)` with `forceMove(s0^*)`, then `forceMove(s1^*)`, etc. Run
+```
+❯ tlc Version2NoGrief.tla -config Success.cfg > v2-no-grief.txt
+```
+We see in the [output](v2-no-grief.txt) that Alice needs to submit as many transactions as there are states to force the channel to a certain turn number.
 
 ## V3
 

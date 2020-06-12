@@ -27,41 +27,41 @@ Error: Temporal properties were violated.
 Error: The following behavior constitutes a counter-example:
 
 State 1: <Initial predicate>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 2: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 4, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 3: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 4: <E line 451, col 6 to line 525, col 61 of module ForceMove>
-/\ submittedTX = NULL
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ TransactionPool = NULL
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
 State 5: <A line 397, col 6 to line 447, col 38 of module ForceMove>
-/\ submittedTX = [state |-> [turnNumber |-> 7], type |-> "REFUTE"]
-/\ pc = [Alice |-> "A", Adjudicator |-> "Adjudicator", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ TransactionPool = [state |-> [turnNumber |-> 7], type |-> "REFUTE"]
+/\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
-Back to state 3: <Adjudicator line 321, col 16 to line 393, col 58 of module ForceMove>
+Back to state 3: <TransactionProcessor line 321, col 16 to line 393, col 58 of module ForceMove>
 
 Finished checking temporal properties in 00s at 2020-06-09 21:01:06
 1439 states generated, 106 distinct states found, 0 states left on queue.
