@@ -25,294 +25,294 @@ Error: The behavior up to this point is:
 State 1: <Initial predicate>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 0
 
 State 2: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 1
 
 State 3: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 1
 
 State 4: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 1
 
 State 5: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 1, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 1, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 1
 
 State 6: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 1, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 1, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 2
 
 State 7: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 1, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 1, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 2
 
 State 8: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 1, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 1, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 2
 
 State 9: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 2, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 2, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 2
 
 State 10: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 2, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 2, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 3
 
 State 11: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 2, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 2, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 3
 
 State 12: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 2, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 2, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 3
 
 State 13: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 3
 
 State 14: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 4
 
 State 15: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 4
 
 State 16: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 4
 
 State 17: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 4, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 4, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 4
 
 State 18: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 4, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 4, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 5
 
 State 19: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 4, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 5
 
 State 20: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 4, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 4, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 5
 
 State 21: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 5
 
 State 22: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 6
 
 State 23: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 6
 
 State 24: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 5, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 5, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 6
 
 State 25: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 6, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 6, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 6
 
 State 26: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 6, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 6, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 7
 
 State 27: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 6, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 6, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 7
 
 State 28: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 6, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 6, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 7
 
 State 29: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 7, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 7, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 7
 
 State 30: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 7, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 7, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 8
 
 State 31: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 7, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 7, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 8
 
 State 32: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 7, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 7, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 8
 
 State 33: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 8, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 8, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 8
 
 State 34: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 8, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 8, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 9
 
 State 35: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 8, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 8, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 9
 
 State 36: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 8, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 8, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 9
 
 State 37: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 9, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 9, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 9
 
 State 38: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 9, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 9, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 10
 
 State 39: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 9, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 9, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 10
 
 State 40: <TransactionProcessor line 323, col 16 to line 396, col 58 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 9, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 9, mode |-> "CHALLENGE"]
 /\ Alice = 1
 /\ alicesActionCount = 10
 
 State 41: <E line 454, col 6 to line 529, col 61 of module ForceMove>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 10, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 10, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 10
 
 State 42: <A line 400, col 6 to line 450, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 11], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 10, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 10, mode |-> "OPEN"]
 /\ Alice = 1
 /\ alicesActionCount = 11
 

@@ -26,20 +26,20 @@ First, here's the definition
 EveDoesntFrontRun == [][~(
     /\ TransactionPool # NULL \* transaction has been submitted
     /\ TransactionPool' = TransactionPool \* transaction is not processed
-    /\ channel' # channel \* channel is changed
-)]_<<TransactionPool, channel>>
+    /\ adjudicator' # adjudicator \* adjudicator is changed
+)]_<<TransactionPool, adjudicator>>
 ```
 
 This is a temporal property, which specifies how variables can change:
-`channel` is the value of the `channel` variable before the action, and
-`channel'` is the value of the `channel` variable after the action.
+`adjudicator` is the value of the `adjudicator` variable before the action, and
+`adjudicator'` is the value of the `adjudicator` variable after the action.
 
 In plain English, the property states:
 
 > It is never true that
 > 1. the submitted transaction stored in `TransactionPool` is not null AND
 > 2. the submitted transaction stored in `TransactionPool` does not change AND
-> 3. the channel `channel` does change
+> 3. the channel value stored in `adjudicator` does change
 
 Of course, if Eve takes an action after Alice has submitted a transaction, but before
 that transaction is recorded, then 1-3 will all hold.
@@ -52,7 +52,7 @@ Error: The behavior up to this point is:
 State 1: <Initial predicate>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
@@ -60,18 +60,18 @@ State 1: <Initial predicate>
 State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
-# In this state, the transaction is still submitted, but the (on-chain) channel 
+# In this state, the transaction is still submitted, but the (on-chain) adjudicator 
 # state has been updated before the TransactionProcessor processed the transaction.
 # Eve has mined a ForceMove transaction before Alice's transaction is mined,
-# updating the `channell` variable to a challenge mode.
+# updating the `adjudicatorl` variable to a challenge mode.
 State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 ```
@@ -84,10 +84,10 @@ If we wish, we can observe more interesting traces, where we force some specific
 EveDoesntFrontRun == [][~(
     /\ TransactionPool # NULL \* transaction has been submitted
     /\ TransactionPool' = TransactionPool \* transaction is not processed
-    /\ channel' # channel \* channel is changed
-    /\ channel'.turnNumber \in { 3,4 }
-    /\ channel'.mode = ChannelMode.OPEN
-)]_<<TransactionPool, channel>>
+    /\ adjudicator' # adjudicator \* adjudicator is changed
+    /\ adjudicator'.turnNumber \in { 3,4 }
+    /\ adjudicator'.mode = adjudicatorMode.OPEN
+)]_<<TransactionPool, adjudicator>>
 ```
 
 This resulted in
@@ -98,7 +98,7 @@ Error: The behavior up to this point is:
 State 1: <Initial predicate>
 /\ TransactionPool = NULL
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 0
 
@@ -106,7 +106,7 @@ State 1: <Initial predicate>
 State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
@@ -114,7 +114,7 @@ State 2: <A line 359, col 6 to line 379, col 38 of module ForceMove>
 State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 0, mode |-> "CHALLENGE"]
+/\ adjudicator = [turnNumber |-> 0, mode |-> "CHALLENGE"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 
@@ -122,7 +122,7 @@ State 3: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 State 4: <E line 383, col 6 to line 434, col 61 of module ForceMove>
 /\ TransactionPool = [state |-> [turnNumber |-> 6], type |-> "FORCE_MOVE"]
 /\ pc = [Alice |-> "A", TransactionProcessor |-> "TransactionProcessor", Eve |-> "E"]
-/\ channel = [turnNumber |-> 3, mode |-> "OPEN"]
+/\ adjudicator = [turnNumber |-> 3, mode |-> "OPEN"]
 /\ Alice = 2
 /\ alicesActionCount = 1
 ```

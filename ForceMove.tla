@@ -60,14 +60,14 @@ ASSUME
 (***************************************************************************)
 (* Alice calls adjudicator functions by submitting a pending transaction   *)
 (* with the function type and arguments.  The TransactionProcessor         *)
-(* processes this transaction and modifies the channel state on her        *)
+(* processes this transaction and modifies the adjudicator state on her        *)
 (* behalf.  However, when Eve calls functions, she directly modifies the   *)
-(* channel state.  This emulates a reality where Eve can consistently      *)
+(* adjudicator state.  This emulates a reality where Eve can consistently      *)
 (* front-run Alice's transactions, when desired.                           *)
 (***************************************************************************)
 
 variables
-    channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ],
+    adjudicator = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ],
     TranactionPool = NULL,
     Alice \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) },
     alicesActionCount = 0
@@ -99,18 +99,18 @@ TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
 EvesSupportedStates == { c \in ValidStates : c.turnNumber < AlicesNextTurnNumber}
 EvesStates == EvesSupportedStates \union { c \in ValidStates : ParticipantIDX(c.turnNumber) # Alice }
 
-challengeOngoing == channel.mode = ChannelMode.CHALLENGE
-channelOpen == channel.mode = ChannelMode.OPEN
+challengeOngoing == adjudicator.mode = ChannelMode.CHALLENGE
+channelOpen == adjudicator.mode = ChannelMode.OPEN
 
-increasesTurnNumber(state) == state.turnNumber > channel.turnNumber
+increasesTurnNumber(state) == state.turnNumber > adjudicator.turnNumber
 
 validState(c) == c \in ValidStates
 
 validTransition(c) ==
     /\ challengeOngoing
-    /\ c.turnNumber = channel.turnNumber + 1
+    /\ c.turnNumber = adjudicator.turnNumber + 1
 
-AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
+AlicesGoalMet == adjudicator.turnNumber \in TargetTurnNumbers
 end define;
 
 macro validateState(c, type)
@@ -124,7 +124,7 @@ end macro;
 macro clearChallenge(turnNumber)
 begin
 assert turnNumber \in Nat;
-channel := [
+adjudicator := [
     mode |-> ChannelMode.OPEN,
     turnNumber |-> turnNumber
 ];
@@ -152,12 +152,12 @@ begin
 validateState(state, "forceMove");
 if
     \/ /\ channelOpen
-       /\ state.turnNumber >= channel.turnNumber
+       /\ state.turnNumber >= adjudicator.turnNumber
     \/ /\ challengeOngoing
        /\ ForceMoveOverwrites
-       /\ state.turnNumber > channel.turnNumber
+       /\ state.turnNumber > adjudicator.turnNumber
 then
-    channel := [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ];
+    adjudicator := [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ];
 end if;
 end macro;
 
@@ -166,9 +166,9 @@ begin
 validateState(state, "refute");
 if
     /\ challengeOngoing
-    /\ ParticipantIDX(state.turnNumber) = ParticipantIDX(channel.turnNumber)
-    /\ state.turnNumber > channel.turnNumber
-then clearChallenge(channel.turnNumber)
+    /\ ParticipantIDX(state.turnNumber) = ParticipantIDX(adjudicator.turnNumber)
+    /\ state.turnNumber > adjudicator.turnNumber
+then clearChallenge(adjudicator.turnNumber)
 end if;
 end macro;
 
@@ -218,11 +218,11 @@ begin
 A:
 while ~AlicesGoalMet do
     await TranactionPool = NULL;
-    if challengeOngoing then with turnNumber = channel.turnNumber do
+    if challengeOngoing then with turnNumber = adjudicator.turnNumber do
         if turnNumber < LatestTurnNumber then
             if AliceRefutes then with  state = CHOOSE s \in StoredStates :
-                /\ s.turnNumber > channel.turnNumber
-                /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber)
+                /\ s.turnNumber > adjudicator.turnNumber
+                /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(adjudicator.turnNumber)
              do submitTX([ type |-> ForceMoveAPI.REFUTE, state |-> state]);
             end with;
             end if;
@@ -265,9 +265,9 @@ end algorithm;
 *)
 
 
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-d6c04ce5fd2661100a7e4f944a631d4b
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-7553a0e9503658653aa4bda6917162f2
 \* Label TransactionProcessor of process TransactionProcessor at line 192 col 1 changed to TransactionProcessor_
-VARIABLES channel, TranactionPool, Alice, alicesActionCount, pc
+VARIABLES adjudicator, TranactionPool, Alice, alicesActionCount, pc
 
 (* define statement *)
 Number == Nat \cup { 0 }
@@ -292,26 +292,26 @@ TargetTurnNumbers == (LatestTurnNumber + 1)..(AlicesNextTurnNumber - 1)
 EvesSupportedStates == { c \in ValidStates : c.turnNumber < AlicesNextTurnNumber}
 EvesStates == EvesSupportedStates \union { c \in ValidStates : ParticipantIDX(c.turnNumber) # Alice }
 
-challengeOngoing == channel.mode = ChannelMode.CHALLENGE
-channelOpen == channel.mode = ChannelMode.OPEN
+challengeOngoing == adjudicator.mode = ChannelMode.CHALLENGE
+channelOpen == adjudicator.mode = ChannelMode.OPEN
 
-increasesTurnNumber(state) == state.turnNumber > channel.turnNumber
+increasesTurnNumber(state) == state.turnNumber > adjudicator.turnNumber
 
 validState(c) == c \in ValidStates
 
 validTransition(c) ==
     /\ challengeOngoing
-    /\ c.turnNumber = channel.turnNumber + 1
+    /\ c.turnNumber = adjudicator.turnNumber + 1
 
-AlicesGoalMet == channel.turnNumber \in TargetTurnNumbers
+AlicesGoalMet == adjudicator.turnNumber \in TargetTurnNumbers
 
 
-vars == << channel, TranactionPool, Alice, alicesActionCount, pc >>
+vars == << adjudicator, TranactionPool, Alice, alicesActionCount, pc >>
 
 ProcSet == {"TransactionProcessor"} \cup {"Alice"} \cup {"Eve"}
 
 Init == (* Global variables *)
-        /\ channel = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
+        /\ adjudicator = [turnNumber |-> 0, mode |-> ChannelMode.OPEN ]
         /\ TranactionPool = NULL
         /\ Alice \in ParticipantIDXs \ { ParticipantIDX(LatestTurnNumber + 1) }
         /\ alicesActionCount = 0
@@ -329,13 +329,13 @@ TransactionProcessor_ == /\ pc["TransactionProcessor"] = "TransactionProcessor_"
                                                                                "Failure of assertion at line 120, column 5 of macro called at line 194, column 66.")
                                                                 ELSE /\ TRUE
                                                           /\ IF \/ /\ channelOpen
-                                                                   /\ (TranactionPool.state).turnNumber >= channel.turnNumber
+                                                                   /\ (TranactionPool.state).turnNumber >= adjudicator.turnNumber
                                                                 \/ /\ challengeOngoing
                                                                    /\ ForceMoveOverwrites
-                                                                   /\ (TranactionPool.state).turnNumber > channel.turnNumber
-                                                                THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (TranactionPool.state).turnNumber ]
+                                                                   /\ (TranactionPool.state).turnNumber > adjudicator.turnNumber
+                                                                THEN /\ adjudicator' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> (TranactionPool.state).turnNumber ]
                                                                 ELSE /\ TRUE
-                                                                     /\ UNCHANGED channel
+                                                                     /\ UNCHANGED adjudicator
                                                      ELSE /\ IF TranactionPool.type = ForceMoveAPI.RESPOND
                                                                 THEN /\ IF ~validState((TranactionPool.state))
                                                                            THEN /\ PrintT((<<"respond", (TranactionPool.state)>>))
@@ -345,12 +345,12 @@ TransactionProcessor_ == /\ pc["TransactionProcessor"] = "TransactionProcessor_"
                                                                      /\ IF validTransition((TranactionPool.state))
                                                                            THEN /\ Assert(((TranactionPool.state).turnNumber) \in Nat, 
                                                                                           "Failure of assertion at line 126, column 1 of macro called at line 195, column 66.")
-                                                                                /\ channel' =            [
-                                                                                                  mode |-> ChannelMode.OPEN,
-                                                                                                  turnNumber |-> ((TranactionPool.state).turnNumber)
-                                                                                              ]
+                                                                                /\ adjudicator' =                [
+                                                                                                      mode |-> ChannelMode.OPEN,
+                                                                                                      turnNumber |-> ((TranactionPool.state).turnNumber)
+                                                                                                  ]
                                                                            ELSE /\ TRUE
-                                                                                /\ UNCHANGED channel
+                                                                                /\ UNCHANGED adjudicator
                                                                 ELSE /\ IF TranactionPool.type = ForceMoveAPI.REFUTE
                                                                            THEN /\ IF ~validState((TranactionPool.state))
                                                                                       THEN /\ PrintT((<<"refute", (TranactionPool.state)>>))
@@ -358,16 +358,16 @@ TransactionProcessor_ == /\ pc["TransactionProcessor"] = "TransactionProcessor_"
                                                                                                      "Failure of assertion at line 120, column 5 of macro called at line 196, column 66.")
                                                                                       ELSE /\ TRUE
                                                                                 /\ IF /\ challengeOngoing
-                                                                                      /\ ParticipantIDX((TranactionPool.state).turnNumber) = ParticipantIDX(channel.turnNumber)
-                                                                                      /\ (TranactionPool.state).turnNumber > channel.turnNumber
-                                                                                      THEN /\ Assert((channel.turnNumber) \in Nat, 
+                                                                                      /\ ParticipantIDX((TranactionPool.state).turnNumber) = ParticipantIDX(adjudicator.turnNumber)
+                                                                                      /\ (TranactionPool.state).turnNumber > adjudicator.turnNumber
+                                                                                      THEN /\ Assert((adjudicator.turnNumber) \in Nat, 
                                                                                                      "Failure of assertion at line 126, column 1 of macro called at line 196, column 66.")
-                                                                                           /\ channel' =            [
-                                                                                                             mode |-> ChannelMode.OPEN,
-                                                                                                             turnNumber |-> (channel.turnNumber)
-                                                                                                         ]
+                                                                                           /\ adjudicator' =                [
+                                                                                                                 mode |-> ChannelMode.OPEN,
+                                                                                                                 turnNumber |-> (adjudicator.turnNumber)
+                                                                                                             ]
                                                                                       ELSE /\ TRUE
-                                                                                           /\ UNCHANGED channel
+                                                                                           /\ UNCHANGED adjudicator
                                                                            ELSE /\ IF TranactionPool.type = ForceMoveAPI.CHECKPOINT
                                                                                       THEN /\ IF ~validState((TranactionPool.state))
                                                                                                  THEN /\ PrintT((<<"checkpoint", (TranactionPool.state)>>))
@@ -377,22 +377,23 @@ TransactionProcessor_ == /\ pc["TransactionProcessor"] = "TransactionProcessor_"
                                                                                            /\ IF increasesTurnNumber((TranactionPool.state))
                                                                                                  THEN /\ Assert(((TranactionPool.state).turnNumber) \in Nat, 
                                                                                                                 "Failure of assertion at line 126, column 1 of macro called at line 197, column 66.")
-                                                                                                      /\ channel' =            [
-                                                                                                                        mode |-> ChannelMode.OPEN,
-                                                                                                                        turnNumber |-> ((TranactionPool.state).turnNumber)
-                                                                                                                    ]
+                                                                                                      /\ adjudicator' =                [
+                                                                                                                            mode |-> ChannelMode.OPEN,
+                                                                                                                            turnNumber |-> ((TranactionPool.state).turnNumber)
+                                                                                                                        ]
                                                                                                  ELSE /\ TRUE
-                                                                                                      /\ UNCHANGED channel
+                                                                                                      /\ UNCHANGED adjudicator
                                                                                       ELSE /\ Assert(FALSE, 
                                                                                                      "Failure of assertion at line 198, column 14.")
-                                                                                           /\ UNCHANGED channel
+                                                                                           /\ UNCHANGED adjudicator
                                                /\ TranactionPool' = NULL
                                           ELSE /\ TRUE
-                                               /\ UNCHANGED << channel, 
+                                               /\ UNCHANGED << adjudicator, 
                                                                TranactionPool >>
                                     /\ pc' = [pc EXCEPT !["TransactionProcessor"] = "TransactionProcessor_"]
                                ELSE /\ pc' = [pc EXCEPT !["TransactionProcessor"] = "Done"]
-                                    /\ UNCHANGED << channel, TranactionPool >>
+                                    /\ UNCHANGED << adjudicator, 
+                                                    TranactionPool >>
                          /\ UNCHANGED << Alice, alicesActionCount >>
 
 TransactionProcessor == TransactionProcessor_
@@ -401,12 +402,12 @@ A == /\ pc["Alice"] = "A"
      /\ IF ~AlicesGoalMet
            THEN /\ TranactionPool = NULL
                 /\ IF challengeOngoing
-                      THEN /\ LET turnNumber == channel.turnNumber IN
+                      THEN /\ LET turnNumber == adjudicator.turnNumber IN
                                 IF turnNumber < LatestTurnNumber
                                    THEN /\ IF AliceRefutes
                                               THEN /\ LET state ==                                CHOOSE s \in StoredStates :
-                                                                   /\ s.turnNumber > channel.turnNumber
-                                                                   /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(channel.turnNumber) IN
+                                                                   /\ s.turnNumber > adjudicator.turnNumber
+                                                                   /\ ParticipantIDX(s.turnNumber) = ParticipantIDX(adjudicator.turnNumber) IN
                                                         /\ IF TranactionPool # NULL
                                                               THEN /\ PrintT((<<TranactionPool, ([ type |-> ForceMoveAPI.REFUTE, state |-> state])>>))
                                                                    /\ Assert(FALSE, 
@@ -436,7 +437,7 @@ A == /\ pc["Alice"] = "A"
                 /\ pc' = [pc EXCEPT !["Alice"] = "A"]
            ELSE /\ pc' = [pc EXCEPT !["Alice"] = "Done"]
                 /\ UNCHANGED << TranactionPool, alicesActionCount >>
-     /\ UNCHANGED << channel, Alice >>
+     /\ UNCHANGED << adjudicator, Alice >>
 
 alice == A
 
@@ -449,13 +450,13 @@ E == /\ pc["Eve"] = "E"
                                                 "Failure of assertion at line 120, column 5 of macro called at line 252, column 12.")
                                  ELSE /\ TRUE
                            /\ IF \/ /\ channelOpen
-                                    /\ state.turnNumber >= channel.turnNumber
+                                    /\ state.turnNumber >= adjudicator.turnNumber
                                  \/ /\ challengeOngoing
                                     /\ ForceMoveOverwrites
-                                    /\ state.turnNumber > channel.turnNumber
-                                 THEN /\ channel' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ]
+                                    /\ state.turnNumber > adjudicator.turnNumber
+                                 THEN /\ adjudicator' = [ mode |-> ChannelMode.CHALLENGE, turnNumber |-> state.turnNumber ]
                                  ELSE /\ TRUE
-                                      /\ UNCHANGED channel
+                                      /\ UNCHANGED adjudicator
                    \/ /\ IF challengeOngoing
                             THEN /\ \/ /\ \E state \in EvesSupportedStates:
                                             /\ IF ~validState(state)
@@ -466,12 +467,12 @@ E == /\ pc["Eve"] = "E"
                                             /\ IF validTransition(state)
                                                   THEN /\ Assert((state.turnNumber) \in Nat, 
                                                                  "Failure of assertion at line 126, column 1 of macro called at line 256, column 47.")
-                                                       /\ channel' =            [
-                                                                         mode |-> ChannelMode.OPEN,
-                                                                         turnNumber |-> (state.turnNumber)
-                                                                     ]
+                                                       /\ adjudicator' =                [
+                                                                             mode |-> ChannelMode.OPEN,
+                                                                             turnNumber |-> (state.turnNumber)
+                                                                         ]
                                                   ELSE /\ TRUE
-                                                       /\ UNCHANGED channel
+                                                       /\ UNCHANGED adjudicator
                                     \/ /\ IF EveCheckpoints
                                              THEN /\ \E state \in EvesSupportedStates:
                                                        /\ IF ~validState(state)
@@ -482,14 +483,14 @@ E == /\ pc["Eve"] = "E"
                                                        /\ IF increasesTurnNumber(state)
                                                              THEN /\ Assert((state.turnNumber) \in Nat, 
                                                                             "Failure of assertion at line 126, column 1 of macro called at line 257, column 73.")
-                                                                  /\ channel' =            [
-                                                                                    mode |-> ChannelMode.OPEN,
-                                                                                    turnNumber |-> (state.turnNumber)
-                                                                                ]
+                                                                  /\ adjudicator' =                [
+                                                                                        mode |-> ChannelMode.OPEN,
+                                                                                        turnNumber |-> (state.turnNumber)
+                                                                                    ]
                                                              ELSE /\ TRUE
-                                                                  /\ UNCHANGED channel
+                                                                  /\ UNCHANGED adjudicator
                                              ELSE /\ TRUE
-                                                  /\ UNCHANGED channel
+                                                  /\ UNCHANGED adjudicator
                                     \/ /\ IF EveRefutes
                                              THEN /\ \E state \in EvesStates:
                                                        /\ IF ~validState(state)
@@ -498,23 +499,23 @@ E == /\ pc["Eve"] = "E"
                                                                             "Failure of assertion at line 120, column 5 of macro called at line 258, column 60.")
                                                              ELSE /\ TRUE
                                                        /\ IF /\ challengeOngoing
-                                                             /\ ParticipantIDX(state.turnNumber) = ParticipantIDX(channel.turnNumber)
-                                                             /\ state.turnNumber > channel.turnNumber
-                                                             THEN /\ Assert((channel.turnNumber) \in Nat, 
+                                                             /\ ParticipantIDX(state.turnNumber) = ParticipantIDX(adjudicator.turnNumber)
+                                                             /\ state.turnNumber > adjudicator.turnNumber
+                                                             THEN /\ Assert((adjudicator.turnNumber) \in Nat, 
                                                                             "Failure of assertion at line 126, column 1 of macro called at line 258, column 60.")
-                                                                  /\ channel' =            [
-                                                                                    mode |-> ChannelMode.OPEN,
-                                                                                    turnNumber |-> (channel.turnNumber)
-                                                                                ]
+                                                                  /\ adjudicator' =                [
+                                                                                        mode |-> ChannelMode.OPEN,
+                                                                                        turnNumber |-> (adjudicator.turnNumber)
+                                                                                    ]
                                                              ELSE /\ TRUE
-                                                                  /\ UNCHANGED channel
+                                                                  /\ UNCHANGED adjudicator
                                              ELSE /\ TRUE
-                                                  /\ UNCHANGED channel
+                                                  /\ UNCHANGED adjudicator
                             ELSE /\ TRUE
-                                 /\ UNCHANGED channel
+                                 /\ UNCHANGED adjudicator
                 /\ pc' = [pc EXCEPT !["Eve"] = "E"]
            ELSE /\ pc' = [pc EXCEPT !["Eve"] = "Done"]
-                /\ UNCHANGED channel
+                /\ UNCHANGED adjudicator
      /\ UNCHANGED << TranactionPool, Alice, alicesActionCount >>
 
 eve == E
@@ -533,7 +534,7 @@ Spec == /\ Init /\ [][Next]_vars
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-fde4e70df52debf3b0d4ae4ecc89bbf6
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-909bec0176088e127165e58e0167acee
 
 AllowedTransactions == [ type: Range(ForceMoveAPI), state: ValidStates ]
 AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
@@ -541,40 +542,40 @@ AllowedChannels == [ mode: Range(ChannelMode), turnNumber: Number ]
 \* Safety & liveness properties
 
 TypeOK ==
-    /\  channel \in AllowedChannels
+    /\  adjudicator \in AllowedChannels
     /\  \/ TranactionPool \in AllowedTransactions
         \/ TranactionPool = NULL
 
-AliceCanProgressChannel == <>[](channel.turnNumber \in TargetTurnNumbers)
+AliceCanProgressChannel == <>[](adjudicator.turnNumber \in TargetTurnNumbers)
     
-\* We can verify that Alice can never directly modify the channel with this property, with
+\* We can verify that Alice can never directly modify the adjudicator with this property, with
 \* the exception that she can finalize the channel.
 AliceMustSubmitTransactions == [][
         /\ TranactionPool = NULL
         /\ TranactionPool' # NULL
-    => UNCHANGED channel
-]_<<TranactionPool, channel>>
+    => UNCHANGED adjudicator
+]_<<TranactionPool, adjudicator>>
 
 TurnNumberIncrements == [][
-    channel'.turnNumber >= channel.turnNumber
-]_<<channel>>
+    adjudicator'.turnNumber >= adjudicator.turnNumber
+]_<<adjudicator>>
 
 
 \* Alice should be able to accomplish her goal by submitting a single transaction.
 AliceCannotBeGriefed == alicesActionCount <= MaxActions
 
-\* Eve front runs if she changes the channel after Alice submitted a transaction, but before 
+\* Eve front runs if she changes the adjudicator after Alice submitted a transaction, but before 
 \* the transaction is processed
 \* Violations of this property are therefore _examples_ of Eve's ability to front-run
 \* Alice's transactions
 EveDoesntFrontRun == [][~(
     /\ TranactionPool # NULL \* transaction has been submitted
     /\ TranactionPool' = TranactionPool \* transaction is not processed
-    /\ channel' # channel \* channel is changed
-)]_<<TranactionPool, channel>>
+    /\ adjudicator' # adjudicator \* adjudicator is changed
+)]_<<TranactionPool, adjudicator>>
 
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Jun 12 08:34:55 MDT 2020 by andrewstewart
+\* Last modified Fri Jun 12 08:38:05 MDT 2020 by andrewstewart
 \* Created Tue Aug 06 14:38:11 MDT 2019 by andrewstewart
